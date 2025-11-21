@@ -69,4 +69,51 @@ async def printer(interaction: discord.Interaction, your_sentence: str):
     # delete after x seconds will be useful for spam.
     await interaction.response.send_message(your_sentence, delete_after=5)
 
+@tree.command(
+    name="sheperd-facts",
+    description="check wikipedia for dog info"
+)
+async def sendEmbed(interaction: discord.Interaction):
+    # Other information such as the embed thumbnail, fields, and author is not set here. Its set in their own functions.
+    my_embed = discord.Embed(
+        title="German Sheperd",
+        description="The German Shepherd, also known in Britain as an Alsatian, is a German breed of working dog of medium to large size. It is characterized by its intelligent and obedient nature. Its historical role was as a herding dog, for herding sheep.The German Shepherd, also known in Britain as an Alsatian, is a German breed of working dog of medium to large size. It is characterized by its intelligent and obedient nature. Its historical role was as a herding dog, for herding sheep.",
+        url="https://en.wikipedia.org/wiki/German_Shepherd",
+
+        # documentation for all of the included colors: 
+        color=discord.Color.blue(),
+    )
+
+    # Adding an image to an embed. Will appear in the top right corner of the message.
+    my_embed.set_thumbnail(url="https://upload.wikimedia.org/wikipedia/commons/d/d0/German_Shepherd_-_DSC_0346_%2810096362833%29.jpg")
+
+    # Each field is added in the same way. Its done like this.
+    my_embed.add_field(
+        name="1890s",
+        value="During the 1890s, attempts were being made to standardise dog breeds. Dogs were being bred to preserve traits that assisted in their job of herding sheep and protecting their flocks from predators. In Germany this was practised within local communities, where shepherds selected and bred dogs. It was recognised that the breed had the necessary skills for herding sheep, such as intelligence, speed, strength and keen sense of smell. The results were dogs that were able to do such things, but that differed significantly, both in appearance and ability, from one locality to another.",
+
+        # IMPORTANT: The inline attribute determines whether or not any other fields can accompany this one on the same line.
+        # IF set to false then the next field will appear under it, if set to true the next field will appear next to it.
+        inline=False
+    )
+    my_embed.add_field(
+        name="1900s",
+        value="Empty"
+    )
+
+    my_embed.add_field(
+        name="20th Century",
+        value="Empty"
+    )
+
+    my_embed.add_field(
+        name="Naming",
+        value="Empty"
+    )
+
+    my_embed.set_footer(text="Information sourced via Wikepedia.org")
+    my_embed.set_author(name="Wikipedia.org", url="https://www.wikipedia.org", icon_url="https://www.wikipedia.org/portal/wikipedia.org/assets/img/Wikipedia-logo-v2@1.5x.png")
+
+    await interaction.response.send_message(embed=my_embed)
+
 client.run(token=str(key))
