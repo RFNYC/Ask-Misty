@@ -1,0 +1,4 @@
+{
+    "editor.codeActionWidget.includeNearbyQuickFixes": false,
+    "editor.emptySelectionClipboard": false
+}
