@@ -162,5 +162,56 @@ async def sendButtonEmbed(interaction: discord.Interaction):
     )
 
     await interaction.response.send_message(embed=button_embed, view=View())
+
+# --- DROPDOWN MENUS ---
+
+# To build a dropdown menu you need to make a class view for the menu itself. THEN a class view for the dropdowns. Then link it to a command.
+
+# Dropdown menu class:
+class Dropdown(discord.ui.Select):
+    def __init__(self):
+
+        # options which will be passed to the menu
+        drop_down_options = [
+            discord.SelectOption(
+                label="Option 1",
+                value="Description of option 1",
+                emoji="⚫"
+            ),
+
+            discord.SelectOption(
+                label="Option 2",
+                value="Description of option 2",
+                emoji="⚫"
+            ),
+
+            discord.SelectOption(
+                label="Option 3",
+                value="Description of option 3",
+                emoji="⚫"
+            )
+        ]
+
+        # responsible for the placeholder text that shows before the user clicked the dropdown
+        # also responsible for letting you pick 1 or more values. For a normal dropdown only allow one at a time.
+        super().__init__(placeholder="Please choose an option:", min_values=1, max_values=1, options=drop_down_options)
+
+    # this function must be called callback (DO NOT CHANGE)
+    async def callback(self, interaction: discord.Interaction):
+        await interaction.response.send_message(f"{self.values[0]}")
+
+# Overarching menu class:
+class MenuView(discord.ui.View):
+    def __init__(self):
+        super().__init__()
+        self.add_item(Dropdown())
+
+@tree.command(
+    name="send-dropdown-menu",
+    description="sends a dropdown menu for you to interact with"
+)
+async def sendDropDown(interaction: discord.Interaction):
+    await interaction.response.send_message(view=MenuView(), delete_after=(5))
+    
     
 client.run(token=str(key))
