@@ -1,5 +1,0 @@
-import finance_scrapper as fs -> copied ur text from the other file
-
-its good that you figured out how to change stuff but dont litter the readme.md
-readme.md is for the project description. we'll decorate it later.
-
