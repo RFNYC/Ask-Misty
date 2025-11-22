@@ -1,3 +1,4 @@
+import json
 import discord
 from discord.ext import commands
 from discord import app_commands
@@ -36,8 +37,13 @@ async def timed_loop():
         print(f"[{current_time}] Loop Run #{run_count}: Printing to terminal:")
 
         # Sends the signal to run the scraping script.
-        subprocess.run([sys.executable, '../services/scraper.py'])
-        
+        result = subprocess.run([sys.executable, '../services/scraper.py'], capture_output=True, text=True)
+
+        # TODO: FIGURE OUT A BETTER WAY TO SEND INFO BACK TO THE BOT FOR FILTERING PURPOSES AND SUCH.
+        # DOING MONGODB SEARCHING IS PROBALBY WAY EASIER THAN MAKING A FUNCTION TO SEARCH YOURSELF.
+        info = json.dumps(result)
+        print(info)
+
         print(f"Scraper will check for new data in {loop_interval_seconds / 3600} hours(s).")
         # Wait for the specified interval before running the loop again
         await asyncio.sleep(loop_interval_seconds)
