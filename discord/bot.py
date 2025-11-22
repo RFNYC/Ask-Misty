@@ -1,8 +1,10 @@
+import json
 import discord
 from discord.ext import commands
 from discord import app_commands
 from dotenv import find_dotenv, load_dotenv
-import os
+from datetime import datetime
+import os, asyncio, sys, subprocess
 
 # Grabbing bot token
 dotenv_path = find_dotenv()
@@ -18,9 +20,43 @@ intents.message_content = True
 client = discord.Client(intents=intents)
 tree = app_commands.CommandTree(client)
 
+# Set the desired interval in seconds (e.g., 3600 seconds = 1 hour)
+loop_interval_seconds = 43200
+async def timed_loop():
+    # Wait until the Discord client is fully connected
+    await client.wait_until_ready()
+    
+    # Simple counter to track how many times the loop has run
+    run_count = 0
+    
+    # This loop runs forever until the bot is manually stopped
+    while not client.is_closed():
+        run_count += 1
+        
+        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        print(f"[{current_time}] Loop Run #{run_count}: Printing to terminal:")
+
+        # Sends the signal to run the scraping script.
+        result = subprocess.run([sys.executable, '../services/scraper.py'], capture_output=True, text=True)
+
+        # TODO: FIGURE OUT A BETTER WAY TO SEND INFO BACK TO THE BOT FOR FILTERING PURPOSES AND SUCH.
+        # DOING MONGODB SEARCHING IS PROBALBY WAY EASIER THAN MAKING A FUNCTION TO SEARCH YOURSELF.
+        info = json.dumps(result)
+        print(info)
+
+        print(f"Scraper will check for new data in {loop_interval_seconds / 3600} hours(s).")
+        # Wait for the specified interval before running the loop again
+        await asyncio.sleep(loop_interval_seconds)
+
+
+
+# --- EVENTS ----
+
 @client.event
 async def on_ready():
     print(f'We have logged in as {client.user}')
+
+    client.loop.create_task(timed_loop())
 
     # For slash commands to work and appear on the users discord client we sync the command tree on startup
     try:
@@ -28,14 +64,6 @@ async def on_ready():
         print("Command tree synced globally.")
     except Exception as e:
         print(f"Failed to sync commands: {e}")
-
-@client.event
-async def on_message(message):
-    if message.author == client.user:
-        return
-
-    if message.content.startswith('$hello'):
-        await message.channel.send('Hello!')
 
 # COMMAND EVENTS
 # Use this wrapper to define a command:
@@ -162,5 +190,57 @@ async def sendButtonEmbed(interaction: discord.Interaction):
     )
 
     await interaction.response.send_message(embed=button_embed, view=View())
-    
+
+# --- DROPDOWN MENU ---
+
+# To build a dropdown menu you need to make a class view for the menu itself. THEN a class view for the dropdowns. Then link it to a command.
+
+# Dropdown menu class:
+class Dropdown(discord.ui.Select):
+    def __init__(self):
+
+        # options which will be passed to the menu
+        drop_down_options = [
+            discord.SelectOption(
+                label="Option 1",
+                value="Description of option 1",
+                emoji="⚫"
+            ),
+
+            discord.SelectOption(
+                label="Option 2",
+                value="Description of option 2",
+                emoji="⚫"
+            ),
+
+            discord.SelectOption(
+                label="Option 3",
+                value="Description of option 3",
+                emoji="⚫"
+            )
+        ]
+
+        # responsible for the placeholder text that shows before the user clicked the dropdown
+        # also responsible for letting you pick 1 or more values. For a normal dropdown only allow one at a time.
+        super().__init__(placeholder="Please choose an option:", min_values=1, max_values=1, options=drop_down_options)
+
+    # this function must be called callback (DO NOT CHANGE)
+    async def callback(self, interaction: discord.Interaction):
+        await interaction.response.send_message(f"{self.values[0]}")
+
+# Overarching menu class:
+class MenuView(discord.ui.View):
+    def __init__(self):
+        super().__init__()
+        self.add_item(Dropdown())
+
+@tree.command(
+    name="send-dropdown-menu",
+    description="sends a dropdown menu for you to interact with"
+)
+async def sendDropDown(interaction: discord.Interaction):
+    await interaction.response.send_message(view=MenuView(), delete_after=(5))
+
+
 client.run(token=str(key))
+
