@@ -1,11 +1,17 @@
   # Yahoo Finance API 
 import requests
+from dotenv import find_dotenv, load_dotenv
+import os
+
+dotenv_path = find_dotenv()
+load_dotenv(dotenv_path)
+key = os.getenv('Yahoo')
 
 base_url = "https://yfapi.net/v8/"
 
 def get_stock_Info(ticker):
     url = f"{base_url}finance/chart/{ticker}"
-    response = requests.get(url, headers={"x-api-key": "PVJafRMwY49zAh4GfamOF81hnyx7hwbHaQyhwCcP"})
+    response = requests.get(url, headers={"x-api-key":f"{key}"})
     
     if response.status_code == 200:
         stock_data = response.json()
