@@ -26,6 +26,7 @@ except Exception as e:
 
 database = mongo_client["forex-factory"]
 collection = database['fxdata']
+forex_currencies = ['AUD', 'CAD', 'CHF', 'CNY', 'EUR', 'GBP', 'JPY', 'NZD', 'USD']
 
 # --- DISCORD STUFF ---
 
@@ -106,35 +107,85 @@ async def greet_command(interaction: discord.Interaction):
     await interaction.response.send_message(f"Hello, {interaction.user.mention}! Here is the data you requested:\n{data}", ephemeral=False)
 
 @tree.command(
-    name="printer", 
-    description="I will print whatever you give me."
+    name="fx-currency-lookup", 
+    description="Displays news from ForexFactory.com relevant to your chosen currency."
 )                   
 # print: str | is saying that this func will have atleast 1 arg passed into it. Names of the params are arbitrary, will reference a data type.
 # the variable name itself is previewed on the discord client in the command list so you can use it to make commands more intuitive.
 # for example. /news - currency  | this prompts the user to type the currency of news they want without extra explanation.
-async def printer(interaction: discord.Interaction, your_sentence: str):
-    # Like a typical python function you can make calls to the print variable we passed in.
-    print(your_sentence)
-    
-    # if you hover over send_message() you'll find more attributes for what happens to the message after sending.
-    # delete after x seconds will be useful for spam.
-    await interaction.response.send_message(your_sentence, delete_after=5)
+async def sendSpecificCurrency(interaction: discord.Interaction, currency: str):
+
+    if currency.upper() not in forex_currencies:
+            await interaction.response.send_message(f'Hey {interaction.user.mention} you wrote: "{currency}" which is not a tracked currency.\nHere is a list of currencies ForexFactory tracks:\n{forex_currencies}')
+    else:
+        # Like a typical python function you can make calls to the print variable we passed in.
+        data = mongoHelpers.currency_specific_news(collection_file=collection, currency=currency.upper())   
+        
+        # Other information such as the embed thumbnail, fields, and author is not set here. Its set in their own functions.
+        my_embed = discord.Embed(
+            title=f"MARKET VOLATILITY - {currency.upper()} News:",
+            description=f"All news events pertaining to {currency.upper()} for the next 24 hours.",
+            url="https://www.forexfactory.com",
+
+            # documentation for all of the included colors: 
+            color=discord.Color.blue(),
+        )
+
+        # Navigating to image:
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        icon_asset_path = os.path.join(script_dir, 'assets', f'{currency}.png')
+        icon = discord.File(icon_asset_path, filename="fx_icon.png") 
+
+        # Adding an image to an embed. Will appear in the top right corner of the message.
+        my_embed.set_thumbnail(url="attachment://fx_icon.png")
+
+        for event in data:
+
+            emj = None
+            
+            if event['impact-level'] == "High Impact Expected":
+                emj = "🔴"
+            elif event['impact-level'] == "Medium Impact Expected":
+                emj = "🟠"
+            elif event['impact-level'] == "Low Impact Expected":
+                emj = "🟡"
+            else:
+                emj = "⚪"
+
+            if event['time-occured'] == '':
+                event['time-occured'] = 'N/A'
+
+            if event['actual'] == '' and event['forecast'] == '' and event['previous'] == '':
+                my_embed.add_field(
+                    name=f"{emj} {event['event-title']}",
+                    value=f"Time Scheduled: {event['time-occured']}",
+                    inline=True
+                )
+            else:
+                my_embed.add_field(
+                    name=f"{emj} {event['event-title']}",
+                    value=f"Actual: {event['actual']},   Forecast: {event['forecast']},   Previous: {event['previous']}\nTime Scheduled: {event['time-occured']}",
+                    inline=False
+                )
+
+
+        # bottom text
+        my_embed.set_footer(text="Data is scraped from Forex Factory and is provided for informational purposes only.")
+        
+        # image appears on top left. then the author name. the author name will have a link attached.
+        my_embed.set_author(name="🌐 Forex Factory", url="https://www.forexfactory.com", icon_url="attachment://indicator.png")
+        
+        # if you hover over send_message() you'll find more attributes for what happens to the message after sending.
+        # delete after x seconds will be useful for spam.
+        await interaction.response.send_message(embed=my_embed, files=[icon])
 
 @tree.command(
     name="high-impact",
     description="Quickly reference today's high-impact forex news."
 )
-async def sendEmbed(interaction: discord.Interaction):
+async def sendHighImpact(interaction: discord.Interaction):
 
     data = mongoHelpers.high_impact_news(collection_file=collection)
-    print(data)
-    print(type(data))
-
-    print(len(data), " Events")
-    print(len(data)*4, " Fields Needed")
-
-    data = data[2:]
-
 
     # Other information such as the embed thumbnail, fields, and author is not set here. Its set in their own functions.
     my_embed = discord.Embed(
@@ -160,48 +211,9 @@ async def sendEmbed(interaction: discord.Interaction):
 
         my_embed.add_field(
             name=f"{event['currency-impacted']}  -  {event['event-title']}",
-            value=f"Time Scheduled: {event['time-occured']}.",
+            value=f"Actual: {event['actual']}, Forecast: {event['forecast']}, Previous: {event['previous']}\nTime Scheduled: {event['time-occured']}",
             inline=False
         )
-
-        my_embed.add_field(
-            name="Actual",
-            value=f"{event['actual']}"
-        )
-
-        my_embed.add_field(
-            name="Forecast",
-            value=f"{event['forecast']}"
-        )
-
-        my_embed.add_field(
-            name="Previous",
-            value=f"{event['previous']}"
-        )
-
-    # # Each field is added in the same way. Its done like this.
-    # my_embed.add_field(
-    #     name="GBP | Retail Sales m/m" ,
-    #     value="Time Scheduled - 4:30am",
-
-    #     # IMPORTANT: The inline attribute determines whether or not any other fields can accompany this one on the same line.
-    #     # IF set to false then the next field will appear under it, if set to true the next field will appear next to it.
-    #     inline=False
-    # )
-    # my_embed.add_field(
-    #     name="Actual",
-    #     value="Empty"
-    # )
-
-    # my_embed.add_field(
-    #     name="Forecast",
-    #     value="Empty"
-    # )
-
-    # my_embed.add_field(
-    #     name="Previous",
-    #     value="Empty",
-    # )
 
     # bottom text
     my_embed.set_footer(text="Data is scraped from Forex Factory and is provided for informational purposes only.")

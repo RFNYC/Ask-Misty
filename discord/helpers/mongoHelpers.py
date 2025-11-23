@@ -26,3 +26,14 @@ def high_impact_news(collection_file):
 
     return events
 
+def currency_specific_news(collection_file, currency):
+
+    query = { 'currency-impacted': f"{currency}" }
+    docs = collection_file.find(query)
+
+    events = []
+    
+    for event in docs:
+        events.append(event)
+
+    return events
