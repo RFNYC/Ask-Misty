@@ -121,20 +121,24 @@ async def data_check(interaction: discord.Interaction, authkey: str):
     description="Debug: Force Misty to retrieve latest ForexFactory data."
 )
 async def force_update(interaction: discord.Interaction, authkey: str):
-    if authkey == f"{key3}":
-
+    
+    print('FORCING UPDATE')
+    print(authkey, key3)
+    print(type(key3))
+    
+    if authkey == key3:
+        
+        await interaction.response.send_message("--- **Forcing Update** ---\n Check console / mongoDB for confirmation. ", ephemeral=False)
         result = subprocess.run([sys.executable, '../services/scraper.py'], capture_output=True, text=True)
-
-        await interaction.response.send_message(f"{result}", ephemeral=False)
     else:
         await interaction.response.send_message(f"Hello, {interaction.user.mention}! Your debug key is invalid.", ephemeral=False)
+        
 
 
 @tree.command(
     name="fx-all-news", 
     description="ForexFactory: Quickly reference today's scheduled news."
 )                   
-
 async def sendAll(interaction: discord.Interaction):
 
     data = mongoHelpers.get_all_news(collection_file=collection)   
