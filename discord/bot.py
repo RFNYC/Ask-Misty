@@ -1,15 +1,31 @@
-import json
 import discord
-from discord.ext import commands
 from discord import app_commands
 from dotenv import find_dotenv, load_dotenv
 from datetime import datetime
+from pymongo.mongo_client import MongoClient
+from pymongo.server_api import ServerApi
 import os, asyncio, sys, subprocess
+from helpers.mongoDB import get_last_timestamp
 
-# Grabbing bot token
+# Grabbing bot token & db password
 dotenv_path = find_dotenv()
 load_dotenv(dotenv_path)
 key = os.getenv('TOKEN')
+key2 = os.getenv('MongoDB')
+
+# Setting up MongoDB:
+uri = f'mongodb+srv://rftestingnyc_db_user:{key2}@cluster.4n8bbif.mongodb.net/?appName=Cluster'
+mongo_client = MongoClient(uri, server_api=ServerApi('1'))
+
+# Send a ping to confirm a successful connection to MongoDB
+try:
+    mongo_client.admin.command('ping')
+    print("Pinged your deployment. You successfully connected to MongoDB!")
+except Exception as e:
+    print(e)
+
+database = mongo_client["forex-factory"]
+collection = database['fxdata']
 
 # --- DISCORD STUFF ---
 
@@ -41,8 +57,7 @@ async def timed_loop():
 
         # TODO: FIGURE OUT A BETTER WAY TO SEND INFO BACK TO THE BOT FOR FILTERING PURPOSES AND SUCH.
         # DOING MONGODB SEARCHING IS PROBALBY WAY EASIER THAN MAKING A FUNCTION TO SEARCH YOURSELF.
-        info = json.dumps(result)
-        print(info)
+        # print(result)
 
         print(f"Scraper will check for new data in {loop_interval_seconds / 3600} hours(s).")
         # Wait for the specified interval before running the loop again
@@ -56,8 +71,14 @@ async def timed_loop():
 async def on_ready():
     print(f'We have logged in as {client.user}')
 
-    client.loop.create_task(timed_loop())
+    startup_message = f"FXFACTORY LAST SCRAPE: {get_last_timestamp(collection_file=collection)}"
+    # You can also send a message to a specific channel on startup, for example:
+    channel_id = 1441475314445320212 # Replace with your channel ID
+    channel = client.get_channel(channel_id)
+    await channel.send(f'{startup_message}')
 
+    # TASKS:
+    client.loop.create_task(timed_loop())
     # For slash commands to work and appear on the users discord client we sync the command tree on startup
     try:
         await tree.sync()
