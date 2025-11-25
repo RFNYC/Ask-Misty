@@ -65,8 +65,3 @@ def pair_specific_news(collection_file, currency1, currency2):
 
     
     return events
-
-
-def force_update(collection_file, auth):
-    # have the bot force scraper.py rerun & update mongoDB.
-    pass

@@ -56,7 +56,7 @@ async def timed_loop():
         print(f"[{current_time}] Loop Run #{run_count}: Printing to terminal:")
 
         # Sends the signal to run the scraping script.
-        # result = subprocess.run([sys.executable, '../services/scraper.py'], capture_output=True, text=True)
+        result = subprocess.run([sys.executable, '../services/scraper.py'], capture_output=True, text=True)
 
         #print(result)
 
@@ -115,6 +115,20 @@ async def data_check(interaction: discord.Interaction, authkey: str):
         await interaction.response.send_message(f"Hello, {interaction.user.mention}! RAW DATA RECIEVED:\n{data}", ephemeral=True)
     else:
         await interaction.response.send_message(f"Hello, {interaction.user.mention}! Your debug key is invalid.", ephemeral=True)
+
+@tree.command(
+    name="debug-force-update", 
+    description="Debug: Force Misty to retrieve latest ForexFactory data."
+)
+async def force_update(interaction: discord.Interaction, authkey: str):
+    if authkey == f"{key3}":
+
+        result = subprocess.run([sys.executable, '../services/scraper.py'], capture_output=True, text=True)
+
+        await interaction.response.send_message(f"{result}", ephemeral=False)
+    else:
+        await interaction.response.send_message(f"Hello, {interaction.user.mention}! Your debug key is invalid.", ephemeral=False)
+
 
 @tree.command(
     name="fx-all-news", 
