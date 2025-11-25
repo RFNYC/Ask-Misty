@@ -24,27 +24,6 @@ except Exception as e:
 database = client["forex-factory"]
 collection = database['fxdata']
 
-
-
-# Check if we need to scrape any information:
-if collection.count_documents({}) == 0:
-    pass
-    print("Starting script...")
-else:
-    # Basically says if the last entry is younger than 24 hours simply stop the script else keep going.
-    doc = collection.find_one()
-    time_now = datetime.now()
-    last_entry_time = doc['timestamp'] # type: ignore
-
-    twenty_four = timedelta(24)
-    time_difference = time_now - last_entry_time
-
-    if time_difference > twenty_four:
-        print("Last entry was over 24 Hours ago. Starting script...")
-    else:
-        print("Last entry was less than 24 Hours ago. Stopping script...")
-        sys.exit()
-
 # --- SCRAPING DATA ----
 
 driver = webdriver.Chrome()
@@ -112,6 +91,8 @@ for i in range(len(titles)):
 temp = {
     'timestamp': datetime.now()
 }
+
+collection.delete_many({})
 
 # Inserts the timestamp document at the top
 collection.insert_one(temp)
