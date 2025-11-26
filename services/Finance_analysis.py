@@ -294,9 +294,10 @@ def pb_ratio(ticker):
         return "The stock is fairly valued."
 
 if __name__ == "__main__":
+    
+    ticker = input("What ticker symbol would you like to analyze?: ")
     print("Starting Financial News Sentiment Analysis...")
-    import sys
-    ticker = sys.argv[1] if len(sys.argv) > 1 else "MSFT"
+
     try:
         main(ticker)
     except Exception as e:
