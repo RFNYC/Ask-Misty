@@ -10,6 +10,7 @@ import yfinance as yf
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
 import torch
 import numpy as np
+from statistics import mean
 
 
 finbert_model = AutoModelForSequenceClassification.from_pretrained("yiyanghkust/finbert-tone")
@@ -112,45 +113,88 @@ def generate_sentiment_message(finbert_scores=None, vader_scores=None, textblob_
 
     return messages.get(label, messages["Neutral"])
     
-def analyze_sentiments(articles_data):
+id2label = {0: "negative", 1: "neutral", 2: "positive"}
 
-    vader_analyzer = SentimentIntensityAnalyzer()
+def finbert_sentiment(text):
+    inputs = finbert_tokenizer(text, return_tensors="pt", truncation=True, max_length=512)
+    outputs = finbert_model(**inputs)
+    probs = torch.nn.functional.softmax(outputs.logits, dim=1)[0].detach().numpy()
+
+    label_idx = probs.argmax()
+    label = id2label[label_idx]
+
+    return {
+        "label": label,
+        "negative": float(probs[0]),
+        "neutral": float(probs[1]),
+        "positive": float(probs[2]),
+    }
+
+def summarize_articles(articles):
+    """
+    Accepts a list of article dicts (each with keys: title, link, published, content)
+    and returns a list of result dicts containing sentiment scores from FinBERT, VADER, and TextBlob.
+    """
+    analyzer = SentimentIntensityAnalyzer()
     results = []
 
-    for article in articles_data:
-        title = article.get('title', '') or ''
-        link = article.get('link', '') or ''
-        content = get_article_content(link) if link else ''
+    for art in articles:
+        title = art.get('title', '') or ''
+        link = art.get('link', '') or ''
+        published = art.get('published', None)
+        content = art.get('content', '') or ''
 
-        TextBlob_sentiment = TextBlob(content).sentiment
-        vader_sentiment = vader_analyzer.polarity_scores(content)
+       
+        if not content and link:
+            try:
+                fetched = get_article_content(link)
+                content = fetched or ''
+            except Exception:
+                content = ''
+
+        text = (title + " " + content).strip()
+        if not text:
+            text = title or content or ""
 
         
-        text_for_finbert = (title + ". " + content) if content else title
-        inputs = finbert_tokenizer(text_for_finbert, return_tensors="pt", truncation=True, max_length=512)
-        with torch.no_grad():
-            outputs = finbert_model(**inputs)
-            probs = torch.nn.functional.softmax(outputs.logits, dim=-1).cpu().numpy()[0]
-        finbert_sentiment = {labels[i]: float(probs[i]) for i in range(len(labels))}
-
-        augmented = {
-            **article,
-            'content': content,
-            'textblob': {
-                'polarity': TextBlob_sentiment.polarity,
-                'subjectivity': TextBlob_sentiment.subjectivity
-            },
-            'vader': vader_sentiment,
-            'finbert': finbert_sentiment
+        fin = finbert_sentiment(text)
+       
+        finbert_scores = {
+            "positive": float(fin.get("positive", 0.0)),
+            "neutral": float(fin.get("neutral", 0.0)),
+            "negative": float(fin.get("negative", 0.0)),
         }
-        results.append(augmented)
+
+        finbert_avg_score = mean(finbert_scores.values()) if finbert_scores else 0.0
+        vader_scores = analyzer.polarity_scores(text)
+
+        
+        try:
+            tb_polarity = float(TextBlob(text).sentiment.polarity)
+        except Exception:
+            tb_polarity = 0.0
+
+        result = {
+            "title": title,
+            "link": link,
+            "published": published,
+            "content": content,
+            "finbert": finbert_scores,
+            "vader": vader_scores,
+            "textblob": {"polarity": tb_polarity}
+        }
+
+        results.append(result)
+
     return results
 
 def analyze_overall_sentiment(articles_data):
 
-    analyzer = SentimentIntensityAnalyzer()
-    scores = analyzer.polarity_scores(articles_data)
-    polarity = scores['compound']
+    try:
+        fin_scores = finbert_sentiment(articles_data)
+        polarity = float(fin_scores.get("positive", 0.0)) - float(fin_scores.get("negative", 0.0))
+    except Exception:
+        polarity = 0.0
 
 
     if polarity > 0.05:
@@ -164,8 +208,6 @@ def analyze_overall_sentiment(articles_data):
 
 def summarize_sentiments(results):
     summary = {
-        'textblob': {'positive': 0, 'neutral': 0, 'negative': 0},
-        'vader': {'positive': 0, 'neutral': 0, 'negative': 0},
         'finbert': {'positive': 0, 'neutral': 0, 'negative': 0}
     }
 
@@ -197,9 +239,9 @@ def summary(results):
     
     return "\n".join(report_lines)
 
-def main(ticker="AAPL", num_articles=10):
+def main(ticker="MSFT", num_articles=10):
     articles = Get_news(ticker, num_articles)
-    results = analyze_sentiments(articles)
+    results = summarize_articles(articles)
     report = summary(results)
     print(report)
 
@@ -254,7 +296,7 @@ def pb_ratio(ticker):
 if __name__ == "__main__":
     print("Starting Financial News Sentiment Analysis...")
     import sys
-    ticker = sys.argv[1] if len(sys.argv) > 1 else "AAPL"
+    ticker = sys.argv[1] if len(sys.argv) > 1 else "MSFT"
     try:
         main(ticker)
     except Exception as e:
