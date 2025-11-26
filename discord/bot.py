@@ -25,9 +25,14 @@ try:
 except Exception as e:
     print(e)
 
-database = mongo_client["forex-factory"]
-collection = database['fxdata']
+# Forex Factory 
+fx_database = mongo_client["forex-factory"]
+fx_collection = fx_database['fxdata']
 forex_currencies = ['AUD', 'CAD', 'CHF', 'CNY', 'EUR', 'GBP', 'JPY', 'NZD', 'USD']
+
+# Individual Server Information
+server_database = mongo_client['registry']
+server_collection = server_database['guilds']
 
 # --- DISCORD STUFF ---
 
@@ -37,6 +42,10 @@ intents.message_content = True
 # CLIENT EVENTS 
 client = discord.Client(intents=intents)
 tree = app_commands.CommandTree(client)
+
+global_guild_settings = {
+    "announcement-channel": ""
+}
 
 # Set the desired interval in seconds (e.g., 3600 seconds = 1 hour)
 loop_interval_seconds = 3600
@@ -55,20 +64,25 @@ async def timed_loop():
         current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         print(f"[{current_time}] Loop Run #{run_count}: Printing to terminal:")
 
-        # Sends the signal to run the scraping script.
-        result = subprocess.run([sys.executable, '../services/scraper.py'], capture_output=True, text=True)
-
-        #print(result)
-
-        # TODO: FIGURE OUT A BETTER WAY TO SEND INFO BACK TO THE BOT FOR FILTERING PURPOSES AND SUCH.
-        # DOING MONGODB SEARCHING IS PROBALBY WAY EASIER THAN MAKING A FUNCTION TO SEARCH YOURSELF.
-        # print(result)
-
         print(f"Scraper will check for new data in {loop_interval_seconds / 3600} hours(s).")
+
+        # only god knows how this works
+        channel = None
+        channel_id = global_guild_settings['announcement-channel']
+
+        if channel_id != "":
+            channel = client.get_channel(int(channel_id))
+        else:
+            pass
+        
+        if channel != None:
+            print("channel message loop active")
+            await channel.send(f"Automatic Announcement test every {loop_interval_seconds / 3600} hours(s).") # type: ignore
+        else:
+            pass
+
         # Wait for the specified interval before running the loop again
         await asyncio.sleep(loop_interval_seconds)
-
-
 
 # --- EVENTS ----
 
@@ -76,14 +90,27 @@ async def timed_loop():
 async def on_ready():
     print(f'We have logged in as {client.user}')
 
-    # startup_message = f"FXFACTORY LAST SCRAPE: {mongoHelpers.get_last_timestamp(collection_file=collection)}"
-    startup_message = "Startup"
+    startup_message = str("""
+    ## 🎉 **Bot Status: ONLINE** 🎉
+    > ⚠️ **IMPORTANT DISCLAIMER:** This project is intended for **educational use only** to practice Python, Discord API, web scraping, and data analysis. **It is NOT designed for real-world financial trading, nor does it provide professional financial advice.** Do not rely on any data or predictions from this bot for real-money decisions. Note: All dates & timestamps given by this bot are in Eastern Standard time. It does not update automatically by location accessed. (sorry!)
+
+    ## ✅ Post-Launch To-Do Checklist:
+    Please ensure the following actions are completed to verify all systems are operating correctly:
+    **Basic Command Check:**
+        1. Run the `/help` command to view available commands.
+        2. Run the `/register` and provide the servers "Server ID" (required for setting announcement channel)
+        3. Use the `/set-announcement` to let Misty know where to send automated messages.
+        4. Try any of the `/fx` commands! Misty is intended for quick on the fly reference to Forex Factory during conversation. 
+
+    👋 Thanks for inviting me!
+    """)
     # You can also send a message to a specific channel on startup, for example:
     channel_id = 1441475314445320212 # Replace with your channel ID
     channel = client.get_channel(channel_id)
-    # await channel.send(f'{startup_message}') # type: ignore
+    await channel.send(f'{startup_message}') # type: ignore
 
-    # TASKS:
+
+    # BACKGROUND TASKS:
     client.loop.create_task(timed_loop())
     # For slash commands to work and appear on the users discord client we sync the command tree on startup
     try:
@@ -106,15 +133,18 @@ async def data_check(interaction: discord.Interaction, authkey: str):
     # This says: Wherever interaction occured. respond to the interaction. by sending a message (.......)
 
     if authkey == f"{key3}":
-        data = mongoHelpers.get_all_news(collection_file=collection)
+        data = mongoHelpers.get_all_news(collection_file=fx_collection)
 
-        print(collection, " <--- should be checking")
+        print(fx_collection, " <--- should be checking")
         print(data,' <-- recieved') 
 
+        channel = interaction.channel
+
         # interaction.user refers to the user who used the command.  |  ephermeral means if others can see the msg. True for No, False for yes.
-        await interaction.response.send_message(f"Hello, {interaction.user.mention}! RAW DATA RECIEVED:\n{data}", ephemeral=True)
+        await interaction.response.send_message(f"Hello, {interaction.user.mention}! RAW DATA RECIEVED:\n{data}", ephemeral=False)
+        # await channel.send(f'curr server_id: {interaction.guild_id}')
     else:
-        await interaction.response.send_message(f"Hello, {interaction.user.mention}! Your debug key is invalid.", ephemeral=True)
+        await interaction.response.send_message(f"Hello, {interaction.user.mention}! Your debug key is invalid.", ephemeral=False)
 
 @tree.command(
     name="debug-force-update", 
@@ -133,7 +163,78 @@ async def force_update(interaction: discord.Interaction, authkey: str):
     else:
         await interaction.response.send_message(f"Hello, {interaction.user.mention}! Your debug key is invalid.", ephemeral=False)
         
+@tree.command(
+    name="fx-last-update", 
+    description="Fetches the timestamp of the last time Misty scraped Forex Factory."
+)
+async def last_update(interaction: discord.Interaction):
+        # Converting input back to an int:
+        last_update = mongoHelpers.get_last_timestamp(collection_file=fx_collection)
 
+        await interaction.response.send_message(f"Hello, {interaction.user.mention}! Misty last scraped Forex Factory on:\n{last_update}", ephemeral=False)
+
+@tree.command(
+    name="register", 
+    description="Register your server with Misty's Database! (required for setting announcement channel)"
+)
+async def guild_register(interaction: discord.Interaction, server_id: str, server_name: str):
+        # Converting input back to an int:
+        int_guild_id = int(server_id)
+
+        true_guild_id = int_guild_id
+        guild = client.get_guild(true_guild_id)
+
+        print(server_id)
+        print(type(server_id))
+        channel = interaction.channel
+
+        if guild != None:
+            await interaction.response.send_message(f"Hello, {interaction.user.mention}! Server fetched successfully.\nChosen Server: {guild}", ephemeral=False)
+            await channel.send(f"Attempting to register...") # type: ignore
+            res = mongoHelpers.register_guild(collection_file=server_collection, guild_id=server_id, server_name=server_name)
+            await channel.send(f"{res}") # type: ignore
+
+        else:
+            await interaction.response.send_message(f"Hello, {interaction.user.mention}! Server fetched was not fetched. Check your server ID.", ephemeral=False)
+
+@tree.command(
+    name="set-announcement-channel", 
+    description="Sets which channel Misty sends automated announcement messages to!"
+)
+async def set_announcement(interaction: discord.Interaction, channel_id: str, server_id: str):
+        # Converting input back to an int:
+        int_channel_id = int(channel_id)
+        int_guild_id = int(server_id)
+
+        true_guild_id = int_guild_id
+
+        res = mongoHelpers.check_guild_exists(collection_file=server_collection, guild_id=true_guild_id)
+        if res == '[404]':
+            await interaction.response.send_message(f"Hello, {interaction.user.mention}! That server was not found in my database.\nPlease make sure you've registered Server-ID:{server_id} with me using `/register`. If you have, please ensure the ID given to me is correct.") # type: ignore
+        else:
+            channel = interaction.channel
+            await channel.send(f"Attempting to set announcement channel...") # type: ignore
+
+            announcement_channel_id = int_channel_id # Replace with your channel ID
+            channel = client.get_channel(announcement_channel_id)
+
+            print(channel)
+            print(type(channel))
+
+            if channel != None:
+                await interaction.response.send_message(f"Hello, {interaction.user.mention}! Announcement channel fetched successfully.\nChosen Channel: {channel}", ephemeral=False)
+                res = mongoHelpers.set_announcement_channel(collection_file=server_collection, guild_id=server_id, channel_id=channel_id)
+
+                global_guild_settings['announcement-channel'] = channel_id
+
+                embed = discord.Embed(
+                    title="✅ Announcement Channel Set!",
+                    description=f"Daily news alerts will now be posted in {channel}.",
+                    color=discord.Color.green()
+                )
+                await channel.send(embed=embed) # type: ignore
+            else: 
+                await interaction.response.send_message(f"Hello, {interaction.user.mention}! Announcement channel could not be fetched. Check your channel ID", ephemeral=False)
 
 @tree.command(
     name="fx-all-news", 
@@ -141,7 +242,7 @@ async def force_update(interaction: discord.Interaction, authkey: str):
 )                   
 async def sendAll(interaction: discord.Interaction):
 
-    data = mongoHelpers.get_all_news(collection_file=collection)   
+    data = mongoHelpers.get_all_news(collection_file=fx_collection)   
 
     # not including the first document since its a timestamp, NOT an event entry.
     data = data[1:]
@@ -210,7 +311,7 @@ async def sendSpecificCurrency(interaction: discord.Interaction, currency: str):
             await interaction.response.send_message(f'Hey {interaction.user.mention} you wrote: "{currency}" which is not a tracked currency.\nHere is a list of currencies ForexFactory tracks:\n{forex_currencies}')
     else:
         # Like a typical python function you can make calls to the print variable we passed in.
-        data = mongoHelpers.currency_specific_news(collection_file=collection, currency=currency.upper())   
+        data = mongoHelpers.currency_specific_news(collection_file=fx_collection, currency=currency.upper())   
         
         # Other information such as the embed thumbnail, fields, and author is not set here. Its set in their own functions.
         my_embed = discord.Embed(
@@ -283,7 +384,7 @@ async def sendPair(interaction: discord.Interaction, base_currency: str, quote_c
         await interaction.response.send_message(f'Hey {interaction.user.mention} One of the currencies you gave are a tracked currency.\nHere is a list of currencies ForexFactory tracks:\n{forex_currencies}')
 
     else:
-        data = mongoHelpers.pair_specific_news(collection_file=collection, currency1=base_currency.upper(), currency2=quote_currency.upper())   
+        data = mongoHelpers.pair_specific_news(collection_file=fx_collection, currency1=base_currency.upper(), currency2=quote_currency.upper())   
         print(data)
         
         my_embed = discord.Embed(
@@ -339,7 +440,7 @@ async def sendPair(interaction: discord.Interaction, base_currency: str, quote_c
 )
 async def sendHighImpact(interaction: discord.Interaction):
 
-    data = mongoHelpers.high_impact_news(collection_file=collection)
+    data = mongoHelpers.high_impact_news(collection_file=fx_collection)
 
     # Other information such as the embed thumbnail, fields, and author is not set here. Its set in their own functions.
     my_embed = discord.Embed(

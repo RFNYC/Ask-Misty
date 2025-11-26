@@ -1,7 +1,5 @@
 # --- MongoDB Helper Functions ---
 
-# TODO: Write a function to force data updates incase the bot is outdated or the cycle is too long.
-
 # Self explanatory
 def get_last_timestamp(collection_file):
 
@@ -65,3 +63,83 @@ def pair_specific_news(collection_file, currency1, currency2):
 
     
     return events
+
+# not optimal time complexity but stop judging me 
+def register_guild(collection_file, guild_id, server_name):
+    servers = set()
+
+    
+    docs = collection_file.find({
+        "guild-id": { "$exists": True } 
+    })
+
+    for server in docs:
+        servers.add(server['guild-id'])
+    
+    if guild_id not in servers:
+        
+        new_server = {
+            "server": "",
+            "guild-id": "",
+            "announcement-channel": ""
+        }
+
+        new_server["server"] = server_name
+        new_server["guild-id"] = guild_id
+
+        collection_file.insert_one(new_server)
+        response = f"Server-ID:{guild_id} with Misty successfully."
+
+        return response
+    else:
+
+        response = f"Server-ID:{guild_id} already registered with Misty."
+
+        return response
+
+def check_guild_exists(collection_file, guild_id):
+
+    temp = []
+
+    doc = collection_file.find({ "guild-id": f'{guild_id}' })
+
+    for server in doc:
+        temp.append(server)
+
+    if len(temp) == 0:
+        response = "[404]"
+        return response
+    else:
+        response = "[200]"
+        return response
+    
+def set_announcement_channel(collection_file, guild_id, channel_id):
+
+    query = { "guild-id": f'{guild_id}' }
+
+    # praying this works
+    new_values = {"$set": {"announcement-channel": f"{channel_id}"}}
+    res = collection_file.update_one(query, new_values)
+
+    if res.modified_count == 1:
+        print(res)
+
+        response = "[201]"
+        return response
+    else:
+        response = "[400]"
+        return response
+
+def get_guild_information(collection_file, guild_id):
+
+    if check_guild_exists(collection_file, guild_id) == '[200]':
+
+        query = ({ "guild-id": f"{guild_id}" })
+
+        # should return a dict
+        guild_info = collection_file.find_one(query)
+
+        return guild_info
+    else:
+        return '[404]'
+
