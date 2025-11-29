@@ -7,18 +7,15 @@ from pymongo.server_api import ServerApi
 import os, asyncio, sys, subprocess
 from helpers import mongoHelpers
 
-# Grabbing bot token & db password
 dotenv_path = find_dotenv()
 load_dotenv(dotenv_path)
 key = os.getenv('TOKEN')
 key2 = os.getenv('MongoDB')
 key3 = os.getenv("MistyDebug")
 
-# Setting up MongoDB:
 uri = f'mongodb+srv://rftestingnyc_db_user:{key2}@cluster.4n8bbif.mongodb.net/?appName=Cluster'
 mongo_client = MongoClient(uri, server_api=ServerApi('1'))
 
-# Send a ping to confirm a successful connection to MongoDB
 try:
     mongo_client.admin.command('ping')
     print("Pinged your deployment. You successfully connected to MongoDB!")
@@ -29,6 +26,7 @@ except Exception as e:
 fx_database = mongo_client["forex-factory"]
 fx_collection = fx_database['fxdata']
 forex_currencies = ['AUD', 'CAD', 'CHF', 'CNY', 'EUR', 'GBP', 'JPY', 'NZD', 'USD']
+off_days = [6,7]
 
 # Individual Server Information
 server_database = mongo_client['registry']
@@ -47,49 +45,9 @@ global_guild_settings = {
     "announcement-channel": ""
 }
 
-# Set the desired interval in seconds (e.g., 3600 seconds = 1 hour)
-loop_interval_seconds = 3600
+# ---- Preset Messages -----
 
-async def timed_loop():
-    # Wait until the Discord client is fully connected
-    await client.wait_until_ready()
-    
-    # Simple counters to track how many times the loop has run
-    run_count = 0
-    announcement_run_count = 0
-
-    # This loop runs forever until the bot is manually stopped
-    while not client.is_closed():
-        run_count += 1
-
-        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        print(f"[{current_time}] Loop Run #{run_count}: Printing to terminal:")
-        print(f"Scraper will check for new data in {loop_interval_seconds / 3600} hours(s).")
-
-        # only god knows how this works
-        channel = None
-        channel_id = global_guild_settings['announcement-channel']
-
-        if channel_id != "":
-            channel = client.get_channel(int(channel_id))
-        else:
-            pass
-
-        if channel != None:
-            await channel.send(f"Automatic Announcements are sent every {loop_interval_seconds / 3600} hours(s) if any occur.") # type: ignore   
-        else:
-            pass
-
-        # Wait for the specified interval before running the loop again
-        await asyncio.sleep(loop_interval_seconds)
-
-# --- EVENTS ----
-
-@client.event
-async def on_ready():
-    print(f'We have logged in as {client.user}')
-
-    startup_message = str("""
+startup_message = str("""
     ## 🎉 **Bot Status: ONLINE** 🎉
     > ⚠️ **IMPORTANT DISCLAIMER:** This project is intended for **educational use only** to practice Python, Discord API, web scraping, and data analysis. **It is NOT designed for real-world financial trading, nor does it provide professional financial advice.** Do not rely on any data or predictions from this bot for real-money decisions. Note: All dates & timestamps given by this bot are in Eastern Standard time. It does not update automatically by location accessed. (sorry!)
 
@@ -103,14 +61,167 @@ async def on_ready():
 
     👋 Thanks for inviting me!
     """)
-    # You can also send a message to a specific channel on startup, for example:
-    channel_id = 1441475314445320212 # Replace with your channel ID
+
+# -------------------------------------------
+
+# FX interval refers to how often scraper.py is used to retrieve information. The other is a interval for various usecases.
+fx_interval_seconds = 600
+system_interval_seconds = 5
+
+async def fx_refresh_loop():
+    await client.wait_until_ready()
+    
+    # Simple counters to track how many times the loop has run
+    run_count = 0
+
+    # This loop runs forever until the bot is manually stopped
+    while not client.is_closed():
+        run_count += 1
+
+        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        print(f"[{current_time}] Loop Run #{run_count}: Printing to terminal:")
+        print(f"Scraper will check for new data in 10mins.")
+
+
+        # Wait for the specified interval before running the loop again
+        await asyncio.sleep(fx_interval_seconds)
+
+async def system_refresh_loop():
+    await client.wait_until_ready()
+    sys_run_count = 0
+
+    # to track if we sent the message that day. We get 1 send per day.
+    market_open_msg = 0
+    market_close_msg = 0
+
+    while not client.is_closed():
+        sys_run_count += 1
+
+        # if 24hrs worth of 5 seconds pass
+        if sys_run_count == 17268:
+            # reset the message counts:
+                sys_run_count = 0
+                market_open_msg = 0
+                market_close_msg = 0
+
+                sys_run_count += 1
+        else:
+            pass        
+
+        curr_day = datetime.now().isoweekday()
+
+        # only god knows how this works
+        channel = None
+        channel_id = global_guild_settings['announcement-channel']
+
+        if channel_id != "":
+            channel = client.get_channel(int(channel_id))
+        else:
+            pass
+
+        if channel != None:
+            # INSIDE HERE IS WHERE ANY AUTOMATIC ANNOUNCEMENTS ON X TIME INTERVAL NEED TO BE BUILT.
+            if market_open_msg == 0: 
+                if datetime.now().hour == 9 and datetime.now().minute == 30 and curr_day not in off_days:
+                    timestamp = datetime.now().strftime("%I:%M %p EST")
+                    
+                    embed = discord.Embed(
+                        title="🔔 US Market Open Alert! 🔔",
+                        description="The **NYSE** and **Nasdaq** are officially **OPEN** for business at 9:30 AM EST! The session is underway.",
+                        color=discord.Color.gold()
+                    )
+                    
+                    embed.add_field(
+                        name="✅ Pre-Trade Reminders:",
+                        value="Be sure to stick to your trading strategy!",
+                        inline=False
+                    )
+                    
+                    embed.add_field(
+                        name="📰 News Check",
+                        value="Review any last-minute economic or company news.",
+                        inline=True
+                    )
+                    
+                    embed.add_field(
+                        name="📊 Indices Check",
+                        value="Note the current direction of major benchmarks (S&P 500, Nasdaq).",
+                        inline=True
+                    )
+                    
+                    embed.add_field(
+                        name="🛑 Risk Management",
+                        value="Confirm your stop-losses and position sizing before executing trades.",
+                        inline=True
+                    )
+                    
+                    embed.set_footer(text=f"Good luck and happy trading! | Sent: {timestamp}")
+
+                    await channel.send(embed=embed) # type: ignore
+                    market_open_msg += 1
+
+            if market_close_msg == 0:
+                if datetime.now().hour == 4 and datetime.now().minute == 00 and curr_day not in off_days:
+                    timestamp = datetime.now().strftime("%I:%M %p EST")
+                    
+                    embed = discord.Embed(
+                        title="🔔 Market Close: Trading Day Complete! 🔔",
+                        description="The **NYSE** and **Nasdaq** regular trading sessions are officially **CLOSED** at 4:00 PM EST. The floor is quiet, but the analysis begins!",
+                        color=discord.Color.dark_purple() 
+                    )
+                    
+                    embed.add_field(
+                        name="📝 End-of-Day Checklist:",
+                        value="Focus now shifts to review, logging, and planning for tomorrow.",
+                        inline=False
+                    )
+                    
+                    embed.add_field(
+                        name="📋 Trade Journaling",
+                        value="Log all executed trades, noting your rationale, outcome, and emotional state.",
+                        inline=True
+                    )
+                    
+                    embed.add_field(
+                        name="📉 Daily Review",
+                        value="Analyze key price action, volume, and major economic data releases.",
+                        inline=True
+                    )
+                    
+                    embed.add_field(
+                        name="🗓️ Tomorrow's Prep",
+                        value="Identify potential movers and update your watchlist for the next open.",
+                        inline=False
+                    )
+                    
+                    embed.set_footer(text=f"Session officially concluded at 4:00 PM EST | Sent: {timestamp}")
+
+                    await channel.send(embed=embed) # type: ignore
+                    market_close_msg += 1
+
+      
+        # Pass the announcement if no announcement channel is set.
+        else:
+            pass
+
+        # Wait for the specified interval before running the loop again
+        await asyncio.sleep(system_interval_seconds)
+
+# --- EVENTS ----
+
+@client.event
+async def on_ready():
+    print(f'We have logged in as {client.user}')
+
+    channel_id = 1441475314445320212 
     channel = client.get_channel(channel_id)
-    # await channel.send(f'{startup_message}') # type: ignore
+    #await channel.send(f'{startup_message}') # type: ignore
 
 
     # BACKGROUND TASKS:
-    client.loop.create_task(timed_loop())
+    client.loop.create_task(system_refresh_loop())
+    client.loop.create_task(fx_refresh_loop())
+
     # For slash commands to work and appear on the users discord client we sync the command tree on startup
     try:
         await tree.sync()
@@ -118,19 +229,13 @@ async def on_ready():
     except Exception as e:
         print(f"Failed to sync commands: {e}")
 
+
 # COMMAND EVENTS
-# Use this wrapper to define a command:
-# This is saying: Listen out for a user invoking /greet
 @tree.command(
-    # Command name: e.g. /greet
     name="debug-check-data", 
-    # Command desc in list:
     description="Debug: Used to check what info Misty recieved from MongoDB."
 )
-# When /greet is invoked do the following
 async def data_check(interaction: discord.Interaction, authkey: str):
-    # This says: Wherever interaction occured. respond to the interaction. by sending a message (.......)
-
     if authkey == f"{key3}":
         data = mongoHelpers.get_all_news(collection_file=fx_collection)
 
@@ -139,11 +244,10 @@ async def data_check(interaction: discord.Interaction, authkey: str):
 
         channel = interaction.channel
 
-        # interaction.user refers to the user who used the command.  |  ephermeral means if others can see the msg. True for No, False for yes.
-        # await interaction.response.send_message(f"Hello, {interaction.user.mention}! RAW DATA RECIEVED:\n{data}", ephemeral=False)
-        await channel.send(f'curr server_id: {interaction.guild_id}')
+        await channel.send(f'curr server_id: {interaction.guild_id}') # type: ignore
     else:
         await interaction.response.send_message(f"Hello, {interaction.user.mention}! Your debug key is invalid.", ephemeral=False)
+
 
 @tree.command(
     name="debug-force-update", 
@@ -162,22 +266,22 @@ async def force_update(interaction: discord.Interaction, authkey: str):
     else:
         await interaction.response.send_message(f"Hello, {interaction.user.mention}! Your debug key is invalid.", ephemeral=False)
 
+
 @tree.command(
     name="fx-last-update", 
     description="Fetches the timestamp of the last time Misty scraped Forex Factory."
 )
 async def last_update(interaction: discord.Interaction):
-        # Converting input back to an int:
         last_update = mongoHelpers.get_last_timestamp(collection_file=fx_collection)
 
         await interaction.response.send_message(f"Hello, {interaction.user.mention}! Misty last scraped Forex Factory on:\n{last_update}", ephemeral=False)
+
 
 @tree.command(
     name="register", 
     description="Register your server with Misty's Database! (required for setting announcement channel)"
 )
 async def guild_register(interaction: discord.Interaction, server_id: str, server_name: str):
-        # Converting input back to an int:
         int_guild_id = int(server_id)
 
         true_guild_id = int_guild_id
@@ -196,12 +300,12 @@ async def guild_register(interaction: discord.Interaction, server_id: str, serve
         else:
             await interaction.response.send_message(f"Hello, {interaction.user.mention}! Server fetched was not fetched. Check your server ID.", ephemeral=False)
 
+
 @tree.command(
     name="set-announcement-channel", 
     description="Sets which channel Misty sends automated announcement messages to!"
 )
 async def set_announcement(interaction: discord.Interaction, channel_id: str, server_id: str):
-        # Converting input back to an int:
         int_channel_id = int(channel_id)
         int_guild_id = int(server_id)
 
@@ -228,12 +332,13 @@ async def set_announcement(interaction: discord.Interaction, channel_id: str, se
 
                 embed = discord.Embed(
                     title="✅ Announcement Channel Set!",
-                    description=f"Automatic announcements will now be tent to #{channel} every {int(loop_interval_seconds / 3600)} hour(s) as they occur.",
+                    description=f"Automatic announcements will now be sent to #{channel} every as they occur.",
                     color=discord.Color.green()
                 )
                 await channel.send(embed=embed) # type: ignore
             else: 
                 await interaction.response.send_message(f"Hello, {interaction.user.mention}! Announcement channel could not be fetched. Check your channel ID", ephemeral=True)
+
 
 @tree.command(
     name="fx-all-news", 
@@ -301,18 +406,13 @@ async def sendAll(interaction: discord.Interaction):
     name="fx-currency-lookup", 
     description="ForexFactory: Displays news from ForexFactory.com relevant to your chosen currency."
 )                   
-# print: str | is saying that this func will have atleast 1 arg passed into it. Names of the params are arbitrary, will reference a data type.
-# the variable name itself is previewed on the discord client in the command list so you can use it to make commands more intuitive.
-# for example. /news - currency  | this prompts the user to type the currency of news they want without extra explanation.
 async def sendSpecificCurrency(interaction: discord.Interaction, currency: str):
 
     if currency.upper() not in forex_currencies:
             await interaction.response.send_message(f'Hey {interaction.user.mention} you wrote: "{currency}" which is not a tracked currency.\nHere is a list of currencies ForexFactory tracks:\n{forex_currencies}')
     else:
-        # Like a typical python function you can make calls to the print variable we passed in.
         data = mongoHelpers.currency_specific_news(collection_file=fx_collection, currency=currency.upper())   
         
-        # Other information such as the embed thumbnail, fields, and author is not set here. Its set in their own functions.
         my_embed = discord.Embed(
             title=f"MARKET VOLATILITY - {currency.upper()} News:",
             description=f"All news events pertaining to {currency.upper()} for the next 24 hours.",
@@ -322,12 +422,10 @@ async def sendSpecificCurrency(interaction: discord.Interaction, currency: str):
             color=discord.Color.blue(),
         )
 
-        # Navigating to image:
         script_dir = os.path.dirname(os.path.abspath(__file__))
         icon_asset_path = os.path.join(script_dir, 'assets', f'{currency}.png')
         icon = discord.File(icon_asset_path, filename="fx_icon.png") 
 
-        # Adding an image to an embed. Will appear in the top right corner of the message.
         my_embed.set_thumbnail(url="attachment://fx_icon.png")
 
         for event in data:
@@ -360,15 +458,12 @@ async def sendSpecificCurrency(interaction: discord.Interaction, currency: str):
                 )
 
 
-        # bottom text
         my_embed.set_footer(text="Data is scraped from Forex Factory and is provided for informational purposes only.")
         
-        # image appears on top left. then the author name. the author name will have a link attached.
         my_embed.set_author(name="🌐 Forex Factory", url="https://www.forexfactory.com", icon_url="attachment://indicator.png")
         
-        # if you hover over send_message() you'll find more attributes for what happens to the message after sending.
-        # delete after x seconds will be useful for spam.
         await interaction.response.send_message(embed=my_embed, files=[icon])
+
 
 @tree.command(
     name="fx-pair-lookup", 
@@ -432,6 +527,7 @@ async def sendPair(interaction: discord.Interaction, base_currency: str, quote_c
         my_embed.set_footer(text="Data is scraped from Forex Factory and is provided for informational purposes only.")
         my_embed.set_author(name="🌐 Forex Factory", url="https://www.forexfactory.com", icon_url="attachment://indicator.png")
         await interaction.response.send_message(embed=my_embed, files=[icon])
+
 
 @tree.command(
     name="fx-high-impact",
@@ -508,6 +604,7 @@ class View(discord.ui.View):
 async def sendButton(interaction: discord.Interaction):
     # To get the button to send as response to this command you pass the "View()" class we previously defined to the send_message portion:
     await interaction.response.send_message(view=View())
+
 
 @tree.command(
     name="embed-with-button",
