@@ -54,16 +54,16 @@ async def timed_loop():
     # Wait until the Discord client is fully connected
     await client.wait_until_ready()
     
-    # Simple counter to track how many times the loop has run
+    # Simple counters to track how many times the loop has run
     run_count = 0
-    
+    announcement_run_count = 0
+
     # This loop runs forever until the bot is manually stopped
     while not client.is_closed():
         run_count += 1
-        
+
         current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         print(f"[{current_time}] Loop Run #{run_count}: Printing to terminal:")
-
         print(f"Scraper will check for new data in {loop_interval_seconds / 3600} hours(s).")
 
         # only god knows how this works
@@ -74,10 +74,9 @@ async def timed_loop():
             channel = client.get_channel(int(channel_id))
         else:
             pass
-        
+
         if channel != None:
-            print("channel message loop active")
-            await channel.send(f"Automatic Announcement test every {loop_interval_seconds / 3600} hours(s).") # type: ignore
+            await channel.send(f"Automatic Announcements are sent every {loop_interval_seconds / 3600} hours(s) if any occur.") # type: ignore   
         else:
             pass
 
@@ -107,7 +106,7 @@ async def on_ready():
     # You can also send a message to a specific channel on startup, for example:
     channel_id = 1441475314445320212 # Replace with your channel ID
     channel = client.get_channel(channel_id)
-    await channel.send(f'{startup_message}') # type: ignore
+    # await channel.send(f'{startup_message}') # type: ignore
 
 
     # BACKGROUND TASKS:
@@ -141,8 +140,8 @@ async def data_check(interaction: discord.Interaction, authkey: str):
         channel = interaction.channel
 
         # interaction.user refers to the user who used the command.  |  ephermeral means if others can see the msg. True for No, False for yes.
-        await interaction.response.send_message(f"Hello, {interaction.user.mention}! RAW DATA RECIEVED:\n{data}", ephemeral=False)
-        # await channel.send(f'curr server_id: {interaction.guild_id}')
+        # await interaction.response.send_message(f"Hello, {interaction.user.mention}! RAW DATA RECIEVED:\n{data}", ephemeral=False)
+        await channel.send(f'curr server_id: {interaction.guild_id}')
     else:
         await interaction.response.send_message(f"Hello, {interaction.user.mention}! Your debug key is invalid.", ephemeral=False)
 
@@ -162,7 +161,7 @@ async def force_update(interaction: discord.Interaction, authkey: str):
         result = subprocess.run([sys.executable, '../services/scraper.py'], capture_output=True, text=True)
     else:
         await interaction.response.send_message(f"Hello, {interaction.user.mention}! Your debug key is invalid.", ephemeral=False)
-        
+
 @tree.command(
     name="fx-last-update", 
     description="Fetches the timestamp of the last time Misty scraped Forex Factory."
@@ -213,7 +212,7 @@ async def set_announcement(interaction: discord.Interaction, channel_id: str, se
             await interaction.response.send_message(f"Hello, {interaction.user.mention}! That server was not found in my database.\nPlease make sure you've registered Server-ID:{server_id} with me using `/register`. If you have, please ensure the ID given to me is correct.") # type: ignore
         else:
             channel = interaction.channel
-            await channel.send(f"Attempting to set announcement channel...") # type: ignore
+            await channel.send(f"Attempting to set announcement channel...", delete_after=5) # type: ignore
 
             announcement_channel_id = int_channel_id # Replace with your channel ID
             channel = client.get_channel(announcement_channel_id)
@@ -222,19 +221,19 @@ async def set_announcement(interaction: discord.Interaction, channel_id: str, se
             print(type(channel))
 
             if channel != None:
-                await interaction.response.send_message(f"Hello, {interaction.user.mention}! Announcement channel fetched successfully.\nChosen Channel: {channel}", ephemeral=False)
+                await interaction.response.send_message(f"Hello, {interaction.user.mention}! Announcement channel fetched successfully.\nChosen Channel: {channel}", ephemeral=True)
                 res = mongoHelpers.set_announcement_channel(collection_file=server_collection, guild_id=server_id, channel_id=channel_id)
 
                 global_guild_settings['announcement-channel'] = channel_id
 
                 embed = discord.Embed(
                     title="✅ Announcement Channel Set!",
-                    description=f"Daily news alerts will now be posted in {channel}.",
+                    description=f"Automatic announcements will now be tent to #{channel} every {int(loop_interval_seconds / 3600)} hour(s) as they occur.",
                     color=discord.Color.green()
                 )
                 await channel.send(embed=embed) # type: ignore
             else: 
-                await interaction.response.send_message(f"Hello, {interaction.user.mention}! Announcement channel could not be fetched. Check your channel ID", ephemeral=False)
+                await interaction.response.send_message(f"Hello, {interaction.user.mention}! Announcement channel could not be fetched. Check your channel ID", ephemeral=True)
 
 @tree.command(
     name="fx-all-news", 
