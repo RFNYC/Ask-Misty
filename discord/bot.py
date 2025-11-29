@@ -4,7 +4,7 @@ from dotenv import find_dotenv, load_dotenv
 from datetime import datetime
 from pymongo.mongo_client import MongoClient
 from pymongo.server_api import ServerApi
-import os, asyncio, sys, subprocess
+import os, asyncio, sys, subprocess, json
 from helpers import mongoHelpers
 
 dotenv_path = find_dotenv()
@@ -64,8 +64,13 @@ startup_message = str("""
 
 # -------------------------------------------
 
-# FX interval refers to how often scraper.py is used to retrieve information. The other is a interval for various usecases.
-fx_interval_seconds = 600
+'''
+FX interval refers to how often scraper.py is used to retrieve information. The other is a general interval for various usecases.
+The reason I chose to do it this way is because although the scheduled times of news reactions are given on forex factory
+that doesn't necessarily cover all possible updates that could occur on the main page. For example if some unforseen event occurs
+having been relevant to USD is added randomly, having a continued refresh loop checking for new events will catch it.
+'''
+fx_interval_seconds = 60
 system_interval_seconds = 5
 
 async def fx_refresh_loop():
@@ -81,6 +86,41 @@ async def fx_refresh_loop():
         current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         print(f"[{current_time}] Loop Run #{run_count}: Printing to terminal:")
         print(f"Scraper will check for new data in 10mins.")
+
+        result = subprocess.run([sys.executable, '../services/scraper.py'], capture_output=True, text=True).stdout
+
+        # only god knows how this works
+        channel = None
+        channel_id = global_guild_settings['announcement-channel']
+
+        if channel_id != "":
+            channel = client.get_channel(int(channel_id))
+        else:
+            pass
+
+        if channel != None:
+            # INSIDE HERE IS WHERE ANY AUTOMATIC ANNOUNCEMENTS ON X TIME INTERVAL NEED TO BE BUILT
+
+                # FUCK THIS SECTION
+                # TODO: FIGURE OUT WHY THIS WONT RETURN AS A LIST OF JSON OBJECTS. ITS SO ANNOYING.
+                data = json.loads(result)
+
+                embed = discord.Embed(
+                title=f"📢 **Economic Data Release:**",
+                color=discord.Color.blue()
+                )
+                
+                print(data)
+                print(type(data))
+
+                # for event in data:
+                #     print(event)
+                #     print(type(event))
+                #     # info = dict(event) 
+                #     # print(info)
+
+        else:
+            pass
 
 
         # Wait for the specified interval before running the loop again
