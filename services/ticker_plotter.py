@@ -23,4 +23,7 @@ Cummulative_log_returns = log_returns.cumsum()
 Cummulative_log_returns.head()
 
 Cummulative_log_returns.plot(title=f'Cummulative Log Returns for {ticker}', figsize=(10,6))
-plt.show()
+
+# Saves the file in current working directory.
+filename = f'{ticker}_Cumulative_Log_Returns.png' 
+plt.savefig(filename, dpi=72, bbox_inches='tight')
