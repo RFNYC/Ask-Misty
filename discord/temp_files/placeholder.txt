@@ -1,0 +1,2 @@
+This folder holds files which are generated and deleted locally at runtime. 
+Nothing should appear here on github besides this file.

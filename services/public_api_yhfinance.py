@@ -34,7 +34,7 @@ def calculate_pb_ratio(ticker):
       pb_ratio = formatter(pb_ratio)
   return pb_ratio
 
-ticker = "AAPL"
+ticker = input("Enter stock ticker symbol: ").upper()
 stock_data= get_stock_Info(ticker)
 
 if stock_data:
@@ -45,6 +45,6 @@ if stock_data:
    print(f"{stock_data['chart']['result'][0]['meta']['regularMarketVolume']} shares traded")
    print(f"{stock_data['chart']['result'][0]['meta']['fiftyTwoWeekHigh']}$ (52W High Price)")
    print(f"{stock_data['chart']['result'][0]['meta']['fiftyTwoWeekLow']}$ (52W Low Price)")
-   print(f"P/B ratio: {calculate_pb_ratio(ticker)}s")
+   print(f"P/B ratio: {calculate_pb_ratio(ticker)}")
 
 
