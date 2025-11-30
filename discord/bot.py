@@ -99,9 +99,10 @@ async def fx_refresh_loop():
             pass
 
         if channel != None:
-
+                
+                print(result, "No Updates. Passing over.")
                 # turning the result string into a useable format
-                if result != '' or result != None:
+                if result != '[]':
                     result = result.replace("'",'"')
                     data = json.loads(result)
 
@@ -109,9 +110,6 @@ async def fx_refresh_loop():
                     title=f"📢 **Economic Data Release:**",
                     color=discord.Color.blue()
                     )
-                    
-                    print(data)
-                    print(type(data))
 
                     for event in data:
 

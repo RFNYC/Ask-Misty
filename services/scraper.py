@@ -85,46 +85,32 @@ for i in range(len(titles)):
 
     all_events.append(event)
 
-# Batch Insert:
-# Keep track of when we first put in data
-temp = {
-    "timestamp": datetime.now()
-}
+# Getting the info used in retrieveUpdates function
+current_data = []
+doc = collection.find({})
 
-events_pre_update = {
-    "event-title": "OPEC-JMMC Meetings", 
-    "currency-impacted": "All", 
-    "impact-level": "Medium Impact Expected", 
-    "time-occured": "All Day", 
-    "actual": "23", 
-    "forecast": "22", 
-    "previous": ""
-}
-
-events_pre_update2 = {
-    "event-title": "OPEC Meetings", 
-    "currency-impacted": "All", 
-    "impact-level": "Medium Impact Expected", 
-    "time-occured": "All Day", 
-    "actual": "54", 
-    "forecast": "43", 
-    "previous": ""
-}
-
-templist = []
-templist.append(events_pre_update)
-templist.append(events_pre_update2)
+# mongoDB return object cant be indexed using in range()
+counter = 0
+for document in doc:
+    if counter == 0:
+        pass
+    else:
+        # getting rid of the mongoDB id (will cause issues if left in)
+        # Get the first key
+        first_key = next(iter(document.keys()))
+        del document[first_key]
+        current_data.append(document)
 
 # print(type(events_pre_update))
 # print(type(all_events), "<--")
 
 def retrieveUpdates():
     all_updates = []
-    for i in range(2):
+    for i in range(len(all_updates)):
         updates = {}
         
         event = dict(all_events[i])
-        event2 = dict(templist[i])
+        event2 = dict(current_data[i])
 
         for key_tuple in event.items(): # Changed variable name from "key" to "key_tuple" for clarity
             key = key_tuple[0]
@@ -145,6 +131,12 @@ def retrieveUpdates():
 # This can be the only print statement not commented on prod.
 # If anything else isn"t commented certain parts of the bot.py script will break.
 print(retrieveUpdates())
+
+# Batch Insert:
+# Keep track of when we first put in data
+temp = {
+    "timestamp": datetime.now()
+}
 
 collection.delete_many({})
 
