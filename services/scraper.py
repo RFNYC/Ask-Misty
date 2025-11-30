@@ -92,22 +92,22 @@ temp = {
 }
 
 events_pre_update = {
-    "event-title": "Manufacturing PMI", 
-    "currency-impacted": "CNY", 
+    "event-title": "OPEC-JMMC Meetings", 
+    "currency-impacted": "All", 
     "impact-level": "Medium Impact Expected", 
-    "time-occured": "8:30pm", 
-    "actual": "", 
-    "forecast": "", 
+    "time-occured": "All Day", 
+    "actual": "23", 
+    "forecast": "22", 
     "previous": ""
 }
 
 events_pre_update2 = {
-    "event-title": "Non-Manufacturing PMI", 
-    "currency-impacted": "CNY", 
-    "impact-level": "Low Impact Expected", 
-    "time-occured": "", 
-    "actual": "", 
-    "forecast": "", 
+    "event-title": "OPEC Meetings", 
+    "currency-impacted": "All", 
+    "impact-level": "Medium Impact Expected", 
+    "time-occured": "All Day", 
+    "actual": "54", 
+    "forecast": "43", 
     "previous": ""
 }
 
@@ -120,7 +120,7 @@ templist.append(events_pre_update2)
 
 def retrieveUpdates():
     all_updates = []
-    for i in range(len(all_events)):
+    for i in range(2):
         updates = {}
         
         event = dict(all_events[i])
@@ -131,7 +131,7 @@ def retrieveUpdates():
             
             if key in event2:
                 if event[key] != event2[key]:
-                    # print(f"Key mismatch at: {key}. Values:\n{event[key]}", event2[key])
+                    #print(f"Key mismatch at: {key}. Values:\n{event[key]}", event2[key])
                     updates["event-title"] = event2["event-title"]
                     updates["currency-impacted"] = event2["currency-impacted"]
                     updates["time-occured"] = event2["time-occured"]

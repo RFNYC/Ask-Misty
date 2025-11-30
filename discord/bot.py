@@ -70,7 +70,7 @@ The reason I chose to do it this way is because although the scheduled times of 
 that doesn't necessarily cover all possible updates that could occur on the main page. For example if some unforseen event occurs
 having been relevant to USD is added randomly, having a continued refresh loop checking for new events will catch it.
 '''
-fx_interval_seconds = 60
+fx_interval_seconds = 30
 system_interval_seconds = 5
 
 async def fx_refresh_loop():
@@ -99,26 +99,51 @@ async def fx_refresh_loop():
             pass
 
         if channel != None:
-            # INSIDE HERE IS WHERE ANY AUTOMATIC ANNOUNCEMENTS ON X TIME INTERVAL NEED TO BE BUILT
 
-                # FUCK THIS SECTION
-                # TODO: FIGURE OUT WHY THIS WONT RETURN AS A LIST OF JSON OBJECTS. ITS SO ANNOYING.
-                data = json.loads(result)
+                # turning the result string into a useable format
+                if result != '' or result != None:
+                    result = result.replace("'",'"')
+                    data = json.loads(result)
 
-                embed = discord.Embed(
-                title=f"📢 **Economic Data Release:**",
-                color=discord.Color.blue()
-                )
-                
-                print(data)
-                print(type(data))
+                    embed = discord.Embed(
+                    title=f"📢 **Economic Data Release:**",
+                    color=discord.Color.blue()
+                    )
+                    
+                    print(data)
+                    print(type(data))
 
-                # for event in data:
-                #     print(event)
-                #     print(type(event))
-                #     # info = dict(event) 
-                #     # print(info)
+                    for event in data:
 
+                        # theres probably a way better way to do this but im lazy
+                        new_vals = []
+                        if 'actual' in event:
+                            new_vals.append((event['actual'], 'actual'))
+                        else:
+                            event['actual'] = 'N/A'
+                            new_vals.append((event['actual'], 'actual'))
+
+                        if 'forecast' in event: 
+                            new_vals.append((event['forecast'], 'forecast'))
+                        else:
+                            event['forecast'] = 'N/A'
+                            new_vals.append((event['forecast'], 'forecast'))
+
+                        if 'previous' in event: 
+                            new_vals.append((event['previous'], 'previous'))
+                        else:
+                            event['previous'] = 'N/A'
+                            new_vals.append((event['previous'], 'previous'))
+
+
+
+                        embed.add_field(
+                            name=f"{event['currency-impacted']} - {event['event-title']}:",
+                            value=f"**New Values:** Actual: {new_vals[0][0]}, Forecast: {new_vals[1][0]} Previous: {new_vals[2][0]}\n**Scheduled Update Time:** {event['time-occured']}",
+                            inline=False
+                        )
+
+                await channel.send(embed=embed)
         else:
             pass
 
