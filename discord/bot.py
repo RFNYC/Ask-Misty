@@ -70,7 +70,7 @@ The reason I chose to do it this way is because although the scheduled times of 
 that doesn't necessarily cover all possible updates that could occur on the main page. For example if some unforseen event occurs
 having been relevant to USD is added randomly, having a continued refresh loop checking for new events will catch it.
 '''
-fx_interval_seconds = 30
+fx_interval_seconds = 600
 system_interval_seconds = 5
 
 async def fx_refresh_loop():
@@ -323,11 +323,42 @@ async def force_update(interaction: discord.Interaction, authkey: str):
     print(type(key3))
     
     if authkey == key3:
+
+        # Create an Embed for successful update
+        success_embed = discord.Embed(
+            title="✅ Update Forced Successfully",
+            description="Misty is now retrieving the latest ForexFactory data.",
+            color=discord.Color.green() 
+        )
+        success_embed.add_field(
+            name="Confirmation", 
+            value="Check the console output or MongoDB for confirmation of the updated data.", 
+            inline=False
+        )
         
-        await interaction.response.send_message("--- **Forcing Update** ---\n Check console / mongoDB for confirmation. ", ephemeral=False)
+        # Send the success Embed
+        await interaction.response.send_message(embed=success_embed, ephemeral=False)
+
+        # Needs to run after the embed is sent or else it times out.
         result = subprocess.run([sys.executable, '../services/scraper.py'], capture_output=True, text=True)
+        print(result)
+            
     else:
-        await interaction.response.send_message(f"Hello, {interaction.user.mention}! Your debug key is invalid.", ephemeral=False)
+        # Create an Embed for invalid key
+        error_embed = discord.Embed(
+            title="❌ Debug Key Invalid",
+            description=f"Hello, {interaction.user.mention}! The authentication key you provided is incorrect.",
+            color=discord.Color.red()
+        )
+            
+        error_embed.add_field(
+            name="Required Key", 
+            value="Please ensure you are using the correct debug key.", 
+            inline=False
+        )
+        
+        # Send the error Embed
+        await interaction.response.send_message(embed=error_embed, ephemeral=False)
 
 
 @tree.command(
@@ -335,33 +366,86 @@ async def force_update(interaction: discord.Interaction, authkey: str):
     description="Fetches the timestamp of the last time Misty scraped Forex Factory."
 )
 async def last_update(interaction: discord.Interaction):
-        last_update = mongoHelpers.get_last_timestamp(collection_file=fx_collection)
+    last_update = mongoHelpers.get_last_timestamp(collection_file=fx_collection)
 
-        await interaction.response.send_message(f"Hello, {interaction.user.mention}! Misty last scraped Forex Factory on:\n{last_update}", ephemeral=False)
+    update_embed = discord.Embed(
+        title="🗓️ Last Forex Factory Scrape Time",
+        description=f"The latest data retrieved by Misty is from the following time:",
+        color=discord.Color.blue() # A calming blue color
+    )
+    
+    update_embed.add_field(
+        name="Last Scrape Timestamp",
+        value=f"**{last_update}**",
+        inline=False
+    )
+    
+    update_embed.set_footer(
+        text=f"Requested by {interaction.user.display_name}", 
+        icon_url=interaction.user.display_avatar.url
+    )
 
+    await interaction.response.send_message(embed=update_embed, ephemeral=False)
 
 @tree.command(
     name="register", 
     description="Register your server with Misty's Database! (required for setting announcement channel)"
 )
 async def guild_register(interaction: discord.Interaction, server_id: str, server_name: str):
-        int_guild_id = int(server_id)
+    
+    int_guild_id = int(server_id)
+    true_guild_id = int_guild_id
+    guild = client.get_guild(true_guild_id)
+    
+    print(server_id)
+    print(type(server_id))
+    channel = interaction.channel
 
-        true_guild_id = int_guild_id
-        guild = client.get_guild(true_guild_id)
+    if guild is not None:
+        
+        success_fetch_embed = discord.Embed(
+            title="✅ Server ID Validated",
+            description=f"Successfully fetched server details for registration.",
+            color=discord.Color.blue()
+        )
+        success_fetch_embed.add_field(
+            name="Chosen Server",
+            value=f"**{guild.name}** (`{guild.id}`)",
+            inline=False
+        )
+        success_fetch_embed.set_footer(text=f"Initiated by {interaction.user.display_name}")
 
-        print(server_id)
-        print(type(server_id))
-        channel = interaction.channel
+        await interaction.response.send_message(embed=success_fetch_embed, ephemeral=False)        
+        await channel.send("Attempting to register this server with the database...") # type: ignore
+        
+        res = mongoHelpers.register_guild(collection_file=server_collection, guild_id=server_id, server_name=server_name)
+        
+        
+        result_embed = discord.Embed(
+            title="📝 Registration Result",
+            description="The database operation is complete.",
+            color=discord.Color.green() if "success" in res.lower() else discord.Color.gold()
+        )
+        result_embed.add_field(
+            name="Database Response",
+            value=f"```\n{res}\n```",
+            inline=False
+        )
+        await channel.send(embed=result_embed) # type: ignore
 
-        if guild != None:
-            await interaction.response.send_message(f"Hello, {interaction.user.mention}! Server fetched successfully.\nChosen Server: {guild}", ephemeral=False)
-            await channel.send(f"Attempting to register...") # type: ignore
-            res = mongoHelpers.register_guild(collection_file=server_collection, guild_id=server_id, server_name=server_name)
-            await channel.send(f"{res}") # type: ignore
-
-        else:
-            await interaction.response.send_message(f"Hello, {interaction.user.mention}! Server fetched was not fetched. Check your server ID.", ephemeral=False)
+    else:
+        error_embed = discord.Embed(
+            title="❌ Server Fetch Failed",
+            description=f"Hello, {interaction.user.mention}! The provided Server ID could not be matched to an accessible Discord server.",
+            color=discord.Color.red()
+        )
+        error_embed.add_field(
+            name="Troubleshooting",
+            value="Please ensure the ID is correct and that the bot is a member of that server.",
+            inline=False
+        )
+        
+        await interaction.response.send_message(embed=error_embed, ephemeral=False)
 
 
 @tree.command(
@@ -369,39 +453,74 @@ async def guild_register(interaction: discord.Interaction, server_id: str, serve
     description="Sets which channel Misty sends automated announcement messages to!"
 )
 async def set_announcement(interaction: discord.Interaction, channel_id: str, server_id: str):
-        int_channel_id = int(channel_id)
-        int_guild_id = int(server_id)
+    
+    int_channel_id = int(channel_id)
+    int_guild_id = int(server_id)
+    true_guild_id = int_guild_id
 
-        true_guild_id = int_guild_id
+    res = mongoHelpers.check_guild_exists(collection_file=server_collection, guild_id=true_guild_id)
+    
+    if res == '[404]':
+        not_found_embed = discord.Embed(
+            title="⚠️ Server Not Registered",
+            description=f"Hello, {interaction.user.mention}! That server was not found in my database.",
+            color=discord.Color.gold()
+        )
+        not_found_embed.add_field(
+            name="Action Required",
+            value=f"Please make sure you've registered Server-ID:**{server_id}** with me using `/register`. If you have, please ensure the ID is correct.",
+            inline=False
+        )
+        
+        await interaction.response.send_message(embed=not_found_embed, ephemeral=True) # Changed to ephemeral=True since it's an error for the user
+        
+    else:
+        channel = interaction.channel
+        await channel.send("Attempting to set announcement channel...", delete_after=5) # type: ignore
 
-        res = mongoHelpers.check_guild_exists(collection_file=server_collection, guild_id=true_guild_id)
-        if res == '[404]':
-            await interaction.response.send_message(f"Hello, {interaction.user.mention}! That server was not found in my database.\nPlease make sure you've registered Server-ID:{server_id} with me using `/register`. If you have, please ensure the ID given to me is correct.") # type: ignore
-        else:
-            channel = interaction.channel
-            await channel.send(f"Attempting to set announcement channel...", delete_after=5) # type: ignore
+        announcement_channel_id = int_channel_id 
+        target_channel = client.get_channel(announcement_channel_id) # Use a clearer variable name
 
-            announcement_channel_id = int_channel_id # Replace with your channel ID
-            channel = client.get_channel(announcement_channel_id)
+        print(target_channel)
+        print(type(target_channel))
 
-            print(channel)
-            print(type(channel))
+        if target_channel is not None:
+            
+            fetch_success_embed = discord.Embed(
+                title="✅ Channel ID Validated",
+                description=f"Announcement channel fetched successfully. Attempting to save to database...",
+                color=discord.Color.blue()
+            )
+            fetch_success_embed.add_field(
+                name="Chosen Channel",
+                value=f"{target_channel.mention}",
+                inline=False
+            )
+            await interaction.response.send_message(embed=fetch_success_embed, ephemeral=True)
+            
+            res = mongoHelpers.set_announcement_channel(collection_file=server_collection, guild_id=server_id, channel_id=channel_id)
+            global_guild_settings['announcement-channel'] = channel_id
 
-            if channel != None:
-                await interaction.response.send_message(f"Hello, {interaction.user.mention}! Announcement channel fetched successfully.\nChosen Channel: {channel}", ephemeral=True)
-                res = mongoHelpers.set_announcement_channel(collection_file=server_collection, guild_id=server_id, channel_id=channel_id)
-
-                global_guild_settings['announcement-channel'] = channel_id
-
-                embed = discord.Embed(
-                    title="✅ Announcement Channel Set!",
-                    description=f"Automatic announcements will now be sent to #{channel} every as they occur.",
-                    color=discord.Color.green()
-                )
-                await channel.send(embed=embed) # type: ignore
-            else: 
-                await interaction.response.send_message(f"Hello, {interaction.user.mention}! Announcement channel could not be fetched. Check your channel ID", ephemeral=True)
-
+            confirmation_embed = discord.Embed(
+                title="✅ Announcement Channel Set!",
+                description=f"Automatic announcements will now be sent to **{target_channel.mention}** as they occur.",
+                color=discord.Color.green()
+            )
+            await target_channel.send(embed=confirmation_embed) # type: ignore
+            
+        else: 
+            channel_error_embed = discord.Embed(
+                title="❌ Channel Fetch Failed",
+                description=f"Hello, {interaction.user.mention}! The Announcement Channel ID provided could not be fetched.",
+                color=discord.Color.red()
+            )
+            channel_error_embed.add_field(
+                name="Troubleshooting",
+                value="Please ensure the ID is correct and that I have **view and send permissions** in that channel.",
+                inline=False
+            )
+            
+            await interaction.response.send_message(embed=channel_error_embed, ephemeral=True)
 
 @tree.command(
     name="fx-all-news", 
@@ -454,7 +573,7 @@ async def sendAll(interaction: discord.Interaction):
         else:
             my_embed.add_field(
                 name=f"{emj} {event['currency-impacted']} - {event['event-title']}",
-                value=f"Actual: {event['actual']},   Forecast: {event['forecast']},   Previous: {event['previous']}\nTime Scheduled: {event['time-occured']}",
+                value=f"Actual: {event['actual']}    Forecast: {event['forecast']}    Previous: {event['previous']}\nTime Scheduled: {event['time-occured']}",
                 inline=False
             )
 
@@ -516,7 +635,7 @@ async def sendSpecificCurrency(interaction: discord.Interaction, currency: str):
             else:
                 my_embed.add_field(
                     name=f"{emj} {event['event-title']}",
-                    value=f"Actual: {event['actual']},   Forecast: {event['forecast']},   Previous: {event['previous']}\nTime Scheduled: {event['time-occured']}",
+                    value=f"Actual: {event['actual']}    Forecast: {event['forecast']}    Previous: {event['previous']}\nTime Scheduled: {event['time-occured']}",
                     inline=False
                 )
 
@@ -583,7 +702,7 @@ async def sendPair(interaction: discord.Interaction, base_currency: str, quote_c
             else:
                 my_embed.add_field(
                     name=f"{emj} {event['currency-impacted']} - {event['event-title']}",
-                    value=f"Actual: {event['actual']},   Forecast: {event['forecast']},   Previous: {event['previous']}\nTime Scheduled: {event['time-occured']}",
+                    value=f"Actual: {event['actual']}    Forecast: {event['forecast']}    Previous: {event['previous']}\nTime Scheduled: {event['time-occured']}",
                     inline=False
                 )
 
@@ -624,7 +743,7 @@ async def sendHighImpact(interaction: discord.Interaction):
 
         my_embed.add_field(
             name=f"{event['currency-impacted']}  -  {event['event-title']}",
-            value=f"Actual: {event['actual']}, Forecast: {event['forecast']}, Previous: {event['previous']}\nTime Scheduled: {event['time-occured']}",
+            value=f"Actual: {event['actual']}  Forecast: {event['forecast']}  Previous: {event['previous']}\nTime Scheduled: {event['time-occured']}",
             inline=False
         )
 
