@@ -48,16 +48,15 @@ global_guild_settings = {
 # ---- Preset Messages -----
 
 startup_message = str("""
-    ## 🎉 **Bot Status: ONLINE** 🎉
+    ## 🎉 **Misty has joined the server!** 🎉
     > ⚠️ **IMPORTANT DISCLAIMER:** This project is intended for **educational use only** to practice Python, Discord API, web scraping, and data analysis. **It is NOT designed for real-world financial trading, nor does it provide professional financial advice.** Do not rely on any data or predictions from this bot for real-money decisions. Note: All dates & timestamps given by this bot are in Eastern Standard time. It does not update automatically by location accessed. (sorry!)
 
     ## ✅ Post-Launch To-Do Checklist:
-    Please ensure the following actions are completed to verify all systems are operating correctly:
+    Please ensure the following actions are completed to ensure all systems are operating correctly:
     **Basic Command Check:**
         1. Run the `/help` command to view available commands.
-        2. Run the `/register` and provide the servers "Server ID" (required for setting announcement channel)
-        3. Use the `/set-announcement` to let Misty know where to send automated messages.
-        4. Try any of the `/fx` commands! Misty is intended for quick on the fly reference to Forex Factory during conversation. 
+        2. Run the `/register` and then `/set-announcement`. These commands are REQUIRED to recieve status updates (like when the bot goes online).
+        3. Try any of the `/fx` commands! Misty is intended for quick on the fly reference to Forex Factory during conversation. 
 
     👋 Thanks for inviting me!
     """)
@@ -270,20 +269,43 @@ async def system_refresh_loop():
         # Wait for the specified interval before running the loop again
         await asyncio.sleep(system_interval_seconds)
 
+async def send_activation_message():
+
+    # Assuming end user has registered a channel for the server we want misty to send a message that its online.
+    # to do this we have to retrieve all announcement channels and then send the message one by one.
+    channels = mongoHelpers.get_announcement_channels(server_collection)
+    for id in channels:
+        target = client.get_channel(int(id))
+
+        if target:
+            print(target)
+
+            embed = discord.Embed(
+                title="✨ Misty Online! 🚀",
+                description="I'm officially connected and ready to assist your server!",
+                color=0x7289DA
+            )
+            
+            embed.add_field(
+                name="Need help?",
+                value="Try running `/help` to see what I can do!",
+                inline=False
+            )
+
+            await target.send(embed=embed) # type: ignore
+    
+
 # --- EVENTS ----
 
 @client.event
 async def on_ready():
     print(f'We have logged in as {client.user}')
 
-    channel_id = 1441475314445320212 
-    channel = client.get_channel(channel_id)
-    #await channel.send(f'{startup_message}') # type: ignore
-
-
     # BACKGROUND TASKS:
+    # Basically tells the client to run x func this once the bot is fully active & has all cached information.
     client.loop.create_task(system_refresh_loop())
     client.loop.create_task(fx_refresh_loop())
+    client.loop.create_task(send_activation_message())
 
     # For slash commands to work and appear on the users discord client we sync the command tree on startup
     try:
@@ -292,6 +314,14 @@ async def on_ready():
     except Exception as e:
         print(f"Failed to sync commands: {e}")
 
+@client.event
+async def on_guild_join(guild: discord.Guild):
+    print(f"Joined a new server: {guild.name} (ID: {guild.id})")
+    
+    target_channel = guild.system_channel
+
+    if target_channel:
+        await target_channel.send(startup_message)
 
 # COMMAND EVENTS
 @tree.command(
@@ -339,9 +369,7 @@ async def force_update(interaction: discord.Interaction, authkey: str):
         # Send the success Embed
         await interaction.response.send_message(embed=success_embed, ephemeral=False)
 
-        # Needs to run after the embed is sent or else it times out.
         result = subprocess.run([sys.executable, '../services/scraper.py'], capture_output=True, text=True)
-        print(result)
             
     else:
         # Create an Embed for invalid key

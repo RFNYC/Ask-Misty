@@ -143,3 +143,11 @@ def get_guild_information(collection_file, guild_id):
     else:
         return '[404]'
 
+# returns only the IDs for announcement channels
+# all other info is unnecessary for the intended use.
+def get_announcement_channels(collection_file):
+
+    # returns a regular array of nums
+    channels = collection_file.distinct("announcement-channel")
+
+    return channels
