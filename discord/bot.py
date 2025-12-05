@@ -48,13 +48,13 @@ global_guild_settings = {
 # ---- Preset Messages -----
 
 startup_message = str("""
-    ## 🎉 **Misty has joined the server!** 🎉
+    ## 🎉 **Misty has joined the server!`** 🎉
     > ⚠️ **IMPORTANT DISCLAIMER:** This project is intended for **educational use only** to practice Python, Discord API, web scraping, and data analysis. **It is NOT designed for real-world financial trading, nor does it provide professional financial advice.** Do not rely on any data or predictions from this bot for real-money decisions. Note: All dates & timestamps given by this bot are in Eastern Standard time. It does not update automatically by location accessed. (sorry!)
 
     ## ✅ Post-Launch To-Do Checklist:
     Please ensure the following actions are completed to ensure all systems are operating correctly:
     **Basic Command Check:**
-        1. Run the `/help` command to view available commands.
+        1. Run the `/misty-help` command to view available commands.
         2. Run the `/register` and then `/set-announcement`. These commands are REQUIRED to recieve status updates (like when the bot goes online).
         3. Try any of the `/fx` commands! Misty is intended for quick on the fly reference to Forex Factory during conversation. 
 
@@ -288,7 +288,7 @@ async def send_activation_message():
             
             embed.add_field(
                 name="Need help?",
-                value="Try running `/help` to see what I can do!",
+                value="Try running `/misty-help` to see what I can do!",
                 inline=False
             )
 
@@ -340,6 +340,72 @@ async def data_check(interaction: discord.Interaction, authkey: str):
         await channel.send(f'curr server_id: {interaction.guild_id}') # type: ignore
     else:
         await interaction.response.send_message(f"Hello, {interaction.user.mention}! Your debug key is invalid.", ephemeral=False)
+
+@tree.command(
+    name="misty-help", 
+    description="Sends a list of commands and a description of what they do."
+)
+async def send_help(interaction: discord.Interaction):
+
+    # 🖼️ Create the main embed object
+    embed = discord.Embed(
+        title="Misty's Command Guide",
+        description="Thanks for inviting Misty! Here's a breakdown of her commands and functionality.",
+        color=discord.Color.yellow()
+    )
+
+    # --- Information Note Section ---
+    embed.add_field(
+        name="ℹ️ A Quick Note on `/fx` Commands",
+        value=(
+            "All commands with the suffix `/fx` scrape **ForexFactory.com** for scheduled news and insights. "
+            "These events help traders gauge market safety and potential volatility."
+        ),
+        inline=False
+    )
+    
+    # --- Setup Commands Section ---
+    setup_commands = (
+        "**`/register`**\n"
+        "Registers you with our database. This is **REQUIRED** for announcement channel persistence and future features.\n\n"
+        "**`/set-announcement`**\n"
+        "Dictates where Misty will send automated messages (online status, market open announcements, etc.). "
+        "**PLEASE SET THIS** to avoid missing important status updates!"
+    )
+    embed.add_field(
+        name="🛠️ Setup Commands (PLEASE DO THESE FIRST)",
+        value=setup_commands,
+        inline=False
+    )
+
+    # --- ForexFactory Commands Section ---
+    fx_commands = (
+        "**`/fx-all-news`**\n"
+        "Returns all news events scheduled for today.\n\n"
+        "**`/fx-high-impact`**\n"
+        "Returns only **HIGH IMPACT** news scheduled today (usually defines market volatility).\n\n"
+        "**`/fx-currency-lookup <currency>`**\n"
+        "Filters to show news only pertaining to the chosen currency. Ex: `USD`.\n\n"
+        "**`/fx-pair-lookup <pair>`**\n"
+        "Filters to show news for a given currency pair. Ex: `EUR/USD`.\n\n"
+        "**`/fx-last-update`**\n"
+        "Check when Misty last scraped data from Forex Factory."
+    )
+    embed.add_field(
+        name="📊 ForexFactory Commands",
+        value=fx_commands,
+        inline=False
+    )
+
+    # --- Other Commands Section ---
+    embed.add_field(
+        name="⏳ Other Commands",
+        value="Still under construction. Stay tuned for new features!",
+        inline=False
+    )
+    
+    # ⬇️ Send the embed as a response to the interaction
+    await interaction.response.send_message(embed=embed, ephemeral=False)
 
 
 @tree.command(
