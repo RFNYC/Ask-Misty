@@ -456,6 +456,54 @@ async def force_update(interaction: discord.Interaction, authkey: str):
 
 
 @tree.command(
+        name="define-strategy",
+        description="Create a strategy for Misty to backtest!"
+)
+async def define_strategy(interaction: discord.Interaction, strategy_name: str, indicator1: str, time_period1: str, indicator2: str, time_period2: str, buy_condition: str, sell_condition: str):
+    
+    """
+    Note: I know this is super tedious and doesn't allow for many strategies or complex capabilities but this is the only option I could think of without
+    having to learn NLP and creating an algorithm for it. That could take me months to implement from scratch. The other option is feeding into an LLM but 
+    that's not very helpful either given AI hallucinations and generally just variance in response.
+
+    So keeping that in mind, the resulting command is a very rigid proof of concept.
+    Lets begin by making a json object for this information.
+    """
+
+    strategy = {
+        f"{strategy_name}": {
+
+            "indicators": [
+                {
+                    "id": "indicator1", 
+                    "type": f"{indicator1}", 
+                    "time-period1": f"{time_period1}"
+                },
+                {
+                    "id": "indicator1", 
+                    "type": f"{indicator2}", 
+                    "time-period1": f"{time_period2}"
+                },
+            ],
+
+            "rules": {
+                "buy": f"{buy_condition}",
+                "sell": f"{sell_condition}"
+            }
+        }
+    }
+
+    # obtaining guild id for helper
+    guild = interaction.guild_id
+    try:
+        result = mongoHelpers.set_new_strategy(collection_file=server_collection, strategy_object=strategy, guild_id=guild)
+    except Exception as e:
+        print(f"error: {e}")
+
+    await interaction.response.send_message(f"set strategy response: {result}")
+
+
+@tree.command(
     name="fx-last-update", 
     description="Fetches the timestamp of the last time Misty scraped Forex Factory."
 )

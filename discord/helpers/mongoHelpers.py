@@ -81,14 +81,15 @@ def register_guild(collection_file, guild_id, server_name):
         new_server = {
             "server": "",
             "guild-id": "",
-            "announcement-channel": ""
+            "announcement-channel": "",
+            "strategies": {}
         }
 
         new_server["server"] = server_name
         new_server["guild-id"] = guild_id
 
         collection_file.insert_one(new_server)
-        response = f"Server-ID:{guild_id} with Misty successfully."
+        response = f"Server-ID:{guild_id} registered with Misty successfully."
 
         return response
     else:
@@ -151,3 +152,31 @@ def get_announcement_channels(collection_file):
     channels = collection_file.distinct("announcement-channel")
 
     return channels
+
+def set_new_strategy(collection_file, strategy_object, guild_id):
+
+    # To update the strategies list simply grab the existing array. Append the new strategy to the end, then replace the entire list.
+
+    query = { "guild-id": f"{guild_id}" }
+    document = collection_file.find_one(query)
+
+    # returns an existing object
+    strategies = document['strategies'] # type: ignore
+
+    # dont ask me how this works lmao
+    keys = list(strategy_object.keys())
+    entry_name = keys[0]
+    strategies[f"{entry_name}"] = strategy_object[f"{entry_name}"]
+    update = { "$set": {"strategies": strategies} }
+
+    res = collection_file.update_one(query, update)
+
+    if res.modified_count == 1:
+        print(res)
+
+        response = "[201]"
+        return response
+    else:
+        response = "[400]"
+        return response
+
