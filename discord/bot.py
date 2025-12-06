@@ -558,7 +558,7 @@ async def guild_register(interaction: discord.Interaction, server_id: str, serve
         success_fetch_embed.set_footer(text=f"Initiated by {interaction.user.display_name}")
 
         await interaction.response.send_message(embed=success_fetch_embed, ephemeral=False)        
-        await channel.send("Attempting to register this server with the database...") # type: ignore
+        await channel.send("Attempting to register this server with the database...", delete_after=3) # type: ignore
         
         res = mongoHelpers.register_guild(collection_file=server_collection, guild_id=server_id, server_name=server_name)
         
@@ -618,7 +618,7 @@ async def set_announcement(interaction: discord.Interaction, channel_id: str, se
         
     else:
         channel = interaction.channel
-        await channel.send("Attempting to set announcement channel...", delete_after=5) # type: ignore
+        await channel.send("Attempting to set announcement channel...", delete_after=3) # type: ignore
 
         announcement_channel_id = int_channel_id 
         target_channel = client.get_channel(announcement_channel_id) # Use a clearer variable name
