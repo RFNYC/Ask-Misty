@@ -5,7 +5,7 @@ from datetime import datetime
 from pymongo.mongo_client import MongoClient
 from pymongo.server_api import ServerApi
 import os, asyncio, sys, subprocess, json
-from helpers import mongoHelpers
+from helpers import mongoHelpers, backtesting
 
 dotenv_path = find_dotenv()
 load_dotenv(dotenv_path)
@@ -501,6 +501,17 @@ async def define_strategy(interaction: discord.Interaction, strategy_name: str, 
         print(f"error: {e}")
 
     await interaction.response.send_message(f"set strategy response: {result}")
+
+
+@tree.command(
+    name="backtest-strategy", 
+    description="Have Misty generate a report on any of the servers saved strategies!"
+)
+async def backtest(interaction: discord.Interaction, strategy_name: str, timeframe: str, years: str):
+    server = interaction.guild_id
+    response = backtesting.backtest_strategy(collection_file=server_collection, strategy_name=strategy_name, timeframe=timeframe, guild_id=server, duration_years=years)
+
+    await interaction.response.send_message(response)
 
 
 @tree.command(
