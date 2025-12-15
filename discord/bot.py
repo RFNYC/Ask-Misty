@@ -5,7 +5,7 @@ from datetime import datetime
 from pymongo.mongo_client import MongoClient
 from pymongo.server_api import ServerApi
 import os, asyncio, sys, subprocess, json
-from helpers import mongoHelpers
+from helpers import mongoHelpers, yfinanceHelpers
 
 dotenv_path = find_dotenv()
 load_dotenv(dotenv_path)
@@ -456,8 +456,125 @@ async def force_update(interaction: discord.Interaction, authkey: str):
 
 
 @tree.command(
+        name="define-strategy",
+        description="Create a strategy for Misty to backtest!"
+)
+async def define_strategy(interaction: discord.Interaction, strategy_name: str, indicator1: str, time_period1: str, indicator2: str, time_period2: str, buy_condition: str, sell_condition: str):
+    
+    """
+    Note: I know this is super tedious and doesn't allow for many strategies or complex capabilities but this is the only option I could think of without
+    having to learn NLP and creating an algorithm for it. That could take me months to implement from scratch. The other option is feeding into an LLM but 
+    that's not very helpful either given AI hallucinations and generally just variance in response.
+
+    So keeping that in mind, the resulting command is a very rigid proof of concept.
+    Lets begin by making a json object for this information.
+    """
+
+    strategy = {
+        f"{strategy_name}": {
+
+            "indicators": [
+                {
+                    "id": "indicator1", 
+                    "type": f"{indicator1}", 
+                    "time-period1": f"{time_period1}"
+                },
+                {
+                    "id": "indicator1", 
+                    "type": f"{indicator2}", 
+                    "time-period1": f"{time_period2}"
+                },
+            ],
+
+            "rules": {
+                "buy": f"{buy_condition}",
+                "sell": f"{sell_condition}"
+            }
+        }
+    }
+
+    # obtaining guild id for helper
+    guild = interaction.guild_id
+    try:
+        result = mongoHelpers.set_new_strategy(collection_file=server_collection, strategy_object=strategy, guild_id=guild)
+    except Exception as e:
+        print(f"error: {e}")
+
+    await interaction.response.send_message(f"set strategy response: {result}")
+
+
+@tree.command(
+    name="backtest-strategy", 
+    description="Have Misty generate a report on any of the servers saved strategies!"
+)
+async def backtest(interaction: discord.Interaction, strategy_name: str, timeframe: str, years: str):
+    server = interaction.guild_id
+    response = yfinanceHelpers.backtest_strategy(collection_file=server_collection, strategy_name=strategy_name, timeframe=timeframe, guild_id=server, duration_years=years)
+
+    await interaction.response.send_message(response)
+
+@tree.command(
+    name="pip-check",
+    description="type: EURUSD"
+)
+async def pipcheck(interaction: discord.Interaction, pair: str):
+    chosen_pair = pair
+    pipval = yfinanceHelpers.calculate_pip_value(chosen_pair)   
+    await interaction.response.send_message(pipval)
+
+@tree.command(
+    name="risk-calculation",
+    description="Have Misty generate the correct lot size for your positon based on your risk tolerance."
+)
+async def risk_calc(interaction: discord.Interaction, pair: str, equity: float, entry_price: float, stop_loss: float, risk_percentage: float):
+
+    account_equity = equity
+
+    if risk_percentage <= 0 or account_equity <= 0:
+        await interaction.response.send_message(
+            "**Error:** Risk percentage and Account Equity must be positive values.", 
+            ephemeral=True
+        )
+        return
+    else:
+        risk_amount = account_equity * (risk_percentage / 100)
+        risk_pips = abs(entry_price - stop_loss) * 10000  # assuming its a 4-decimal pair for simplicity.
+        pip_size = yfinanceHelpers.calculate_pip_value(pair)
+
+        if risk_pips == 0:
+            await interaction.response.send_message(
+                "**Error:** Entry Price and Stop Loss Price cannot be the same. Risk in pips is zero.",
+                ephemeral=True
+            )
+            return
+        else:
+            
+            # Denominator: Monetary value of the trade risk, assuming 1 Standard Lot
+            monetary_risk_per_standard_lot = risk_pips * pip_size
+
+            # Final Lot Size (in standard lots: 1.0 = 100,000 units)
+            lot_size = risk_amount / monetary_risk_per_standard_lot
+    
+            embed = discord.Embed(
+                title="💰Position Size Calculation",
+                description=f"Risk Management for **{pair.upper()}**",
+                color=discord.Color.green()
+            )
+            embed.add_field(name="Account Equity", value=f"${account_equity:,.2f}", inline=True)
+            embed.add_field(name="Risk % Defined", value=f"{risk_percentage}%", inline=True)
+            embed.add_field(name="Monetary Risk", value=f"${risk_amount:,.2f}", inline=True)
+            embed.add_field(name="Pip Size", value=f"{pip_size:.1f} pips", inline=True)
+            embed.add_field(name="Risk in Pips", value=f"{risk_pips:.1f} pips", inline=True)
+            embed.add_field(name="Lot Size (Standard Lots)", value=f"**{lot_size:.2f}** lots", inline=True)
+            embed.set_footer(text="Disclaimer: Calculation uses a standard lot size of 100,000 units and assumes a 4 decimal pair. For non standard pairs like those including JPY, this tool won't give the expected results.")
+
+            # Application commands require a response (interaction.response.send_message)
+            # Use ephemeral=False to make the message visible to everyone in the channel
+            await interaction.response.send_message(embed=embed, ephemeral=False)
+
+@tree.command(
     name="fx-last-update", 
-    description="Fetches the timestamp of the last time Misty scraped Forex Factory."
+    description="ForexFactory: Fetches the timestamp of the last time Misty scraped Forex Factory."
 )
 async def last_update(interaction: discord.Interaction):
     last_update = mongoHelpers.get_last_timestamp(collection_file=fx_collection)
@@ -510,7 +627,7 @@ async def guild_register(interaction: discord.Interaction, server_id: str, serve
         success_fetch_embed.set_footer(text=f"Initiated by {interaction.user.display_name}")
 
         await interaction.response.send_message(embed=success_fetch_embed, ephemeral=False)        
-        await channel.send("Attempting to register this server with the database...") # type: ignore
+        await channel.send("Attempting to register this server with the database...", delete_after=3) # type: ignore
         
         res = mongoHelpers.register_guild(collection_file=server_collection, guild_id=server_id, server_name=server_name)
         
@@ -570,7 +687,7 @@ async def set_announcement(interaction: discord.Interaction, channel_id: str, se
         
     else:
         channel = interaction.channel
-        await channel.send("Attempting to set announcement channel...", delete_after=5) # type: ignore
+        await channel.send("Attempting to set announcement channel...", delete_after=3) # type: ignore
 
         announcement_channel_id = int_channel_id 
         target_channel = client.get_channel(announcement_channel_id) # Use a clearer variable name
