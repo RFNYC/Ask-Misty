@@ -26,6 +26,7 @@ except Exception as e:
 fx_database = mongo_client["forex-factory"]
 fx_collection = fx_database['fxdata']
 forex_currencies = ['AUD', 'CAD', 'CHF', 'CNY', 'EUR', 'GBP', 'JPY', 'NZD', 'USD']
+missing_icons = ['CAD', 'AUD', 'NZD', 'CHF']
 off_days = [6,7]
 
 # Individual Server Information
@@ -814,7 +815,10 @@ async def sendSpecificCurrency(interaction: discord.Interaction, currency: str):
             # documentation for all of the included colors: 
             color=discord.Color.blue(),
         )
-
+        
+        if currency in missing_icons:
+            currency = 'ALL'
+            
         script_dir = os.path.dirname(os.path.abspath(__file__))
         icon_asset_path = os.path.join(script_dir, 'assets', f'{currency}.png')
         icon = discord.File(icon_asset_path, filename="fx_icon.png") 
