@@ -5,7 +5,7 @@ from datetime import datetime
 from pymongo.mongo_client import MongoClient
 from pymongo.server_api import ServerApi
 import os, asyncio, sys, subprocess, json
-from helpers import mongoHelpers, backtesting
+from helpers import mongoHelpers, yfinanceHelpers
 
 dotenv_path = find_dotenv()
 load_dotenv(dotenv_path)
@@ -509,14 +509,72 @@ async def define_strategy(interaction: discord.Interaction, strategy_name: str, 
 )
 async def backtest(interaction: discord.Interaction, strategy_name: str, timeframe: str, years: str):
     server = interaction.guild_id
-    response = backtesting.backtest_strategy(collection_file=server_collection, strategy_name=strategy_name, timeframe=timeframe, guild_id=server, duration_years=years)
+    response = yfinanceHelpers.backtest_strategy(collection_file=server_collection, strategy_name=strategy_name, timeframe=timeframe, guild_id=server, duration_years=years)
 
     await interaction.response.send_message(response)
 
+@tree.command(
+    name="pip-check",
+    description="type: EURUSD"
+)
+async def pipcheck(interaction: discord.Interaction, pair: str):
+    chosen_pair = pair
+    pipval = yfinanceHelpers.calculate_pip_value(chosen_pair)   
+    await interaction.response.send_message(pipval)
+
+@tree.command(
+    name="risk-calculation",
+    description="Have Misty generate the correct lot size for your positon based on your risk tolerance."
+)
+async def risk_calc(interaction: discord.Interaction, pair: str, equity: float, entry_price: float, stop_loss: float, risk_percentage: float):
+
+    account_equity = equity
+
+    if risk_percentage <= 0 or account_equity <= 0:
+        await interaction.response.send_message(
+            "**Error:** Risk percentage and Account Equity must be positive values.", 
+            ephemeral=True
+        )
+        return
+    else:
+        risk_amount = account_equity * (risk_percentage / 100)
+        risk_pips = abs(entry_price - stop_loss) * 10000  # assuming its a 4-decimal pair for simplicity.
+        pip_size = yfinanceHelpers.calculate_pip_value(pair)
+
+        if risk_pips == 0:
+            await interaction.response.send_message(
+                "**Error:** Entry Price and Stop Loss Price cannot be the same. Risk in pips is zero.",
+                ephemeral=True
+            )
+            return
+        else:
+            
+            # Denominator: Monetary value of the trade risk, assuming 1 Standard Lot
+            monetary_risk_per_standard_lot = risk_pips * pip_size
+
+            # Final Lot Size (in standard lots: 1.0 = 100,000 units)
+            lot_size = risk_amount / monetary_risk_per_standard_lot
+    
+            embed = discord.Embed(
+                title="💰Position Size Calculation",
+                description=f"Risk Management for **{pair.upper()}**",
+                color=discord.Color.green()
+            )
+            embed.add_field(name="Account Equity", value=f"${account_equity:,.2f}", inline=True)
+            embed.add_field(name="Risk % Defined", value=f"{risk_percentage}%", inline=True)
+            embed.add_field(name="Monetary Risk", value=f"${risk_amount:,.2f}", inline=True)
+            embed.add_field(name="Pip Size", value=f"{pip_size:.1f} pips", inline=True)
+            embed.add_field(name="Risk in Pips", value=f"{risk_pips:.1f} pips", inline=True)
+            embed.add_field(name="Lot Size (Standard Lots)", value=f"**{lot_size:.2f}** lots", inline=True)
+            embed.set_footer(text="Disclaimer: Calculation uses a standard lot size of 100,000 units and assumes a 4 decimal pair. For non standard pairs like those including JPY, this tool won't give the expected results.")
+
+            # Application commands require a response (interaction.response.send_message)
+            # Use ephemeral=False to make the message visible to everyone in the channel
+            await interaction.response.send_message(embed=embed, ephemeral=False)
 
 @tree.command(
     name="fx-last-update", 
-    description="Fetches the timestamp of the last time Misty scraped Forex Factory."
+    description="ForexFactory: Fetches the timestamp of the last time Misty scraped Forex Factory."
 )
 async def last_update(interaction: discord.Interaction):
     last_update = mongoHelpers.get_last_timestamp(collection_file=fx_collection)

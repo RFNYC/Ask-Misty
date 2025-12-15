@@ -39,14 +39,6 @@ def backtest_strategy(collection_file, strategy_name, guild_id, timeframe, durat
 
     # ---- Backtesting -----
 
-    # DATA RETRIEVAL: Thanks donart
-
-    dotenv_path = find_dotenv()
-    load_dotenv(dotenv_path)
-    key = os.getenv('Yahoo') # This key is not actually used since yfinance handles the API calls
-
-    # base_url = "https://yfapi.net/v8/" # Not needed with yfinance
-
     # Only tracking S&P500:
     ticker = "^GSPC"        
     end_date = datetime.now()
@@ -95,3 +87,38 @@ def backtest_strategy(collection_file, strategy_name, guild_id, timeframe, durat
     # cleanup
     dataset = data_df.dropna()
     print(dataset)
+
+
+def calculate_pip_value(ticker_symbol):
+    
+    ticker_symbol = f"{ticker_symbol.upper()}=X"
+    ticker_symbol = ticker_symbol.upper()
+
+    ticker = yf.Ticker(ticker_symbol)
+    current_rate = ticker.info.get('regularMarketPrice')
+
+    if current_rate is None:
+        return None
+
+    quote_currency = ticker_symbol[3:6]
+
+    # for simplicity we're going to assume these things to be true.
+    # these units are pretty standard for most pairs.
+    lot_size_units = 100000
+    pip_size = 0.0001
+    account_currency = "USD"
+
+    pip_value_in_quote = (pip_size / current_rate) * lot_size_units
+    
+    if quote_currency == account_currency:
+        final_pip_value = pip_size * lot_size_units
+    else:
+        cross_ticker_symbol = f"{quote_currency}{account_currency}=X"
+        cross_rate = yf.Ticker(cross_ticker_symbol).info.get('regularMarketPrice')
+        
+        if cross_rate is None:
+            return None
+            
+        final_pip_value = pip_value_in_quote * cross_rate
+        
+    return final_pip_value
