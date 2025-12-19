@@ -1,10 +1,12 @@
 import discord
+import os, asyncio, sys, subprocess, json
+import commands, other_embeds
+
 from discord import app_commands
 from dotenv import find_dotenv, load_dotenv
 from datetime import datetime
 from pymongo.mongo_client import MongoClient
 from pymongo.server_api import ServerApi
-import os, asyncio, sys, subprocess, json
 from helpers import mongoHelpers, yfinanceHelpers
 
 dotenv_path = find_dotenv()
@@ -12,6 +14,9 @@ load_dotenv(dotenv_path)
 key = os.getenv('TOKEN')
 key2 = os.getenv('MongoDB')
 key3 = os.getenv("MistyDebug")
+
+# will get passed to all functions that need to find assets
+script_dir = os.path.dirname(os.path.abspath(__file__))
 
 uri = f'mongodb+srv://rftestingnyc_db_user:{key2}@cluster.4n8bbif.mongodb.net/?appName=Cluster'
 mongo_client = MongoClient(uri, server_api=ServerApi('1'))
@@ -45,24 +50,6 @@ tree = app_commands.CommandTree(client)
 global_guild_settings = {
     "announcement-channel": ""
 }
-
-# ---- Preset Messages -----
-
-startup_message = str("""
-    ## 🎉 **Misty has joined the server!`** 🎉
-    > ⚠️ **IMPORTANT DISCLAIMER:** This project is intended for **educational use only** to practice Python, Discord API, web scraping, and data analysis. **It is NOT designed for real-world financial trading, nor does it provide professional financial advice.** Do not rely on any data or predictions from this bot for real-money decisions. Note: All dates & timestamps given by this bot are in Eastern Standard time. It does not update automatically by location accessed. (sorry!)
-
-    ## ✅ Post-Launch To-Do Checklist:
-    Please ensure the following actions are completed to ensure all systems are operating correctly:
-    **Basic Command Check:**
-        1. Run the `/misty-help` command to view available commands.
-        2. Run the `/register` and then `/set-announcement`. These commands are REQUIRED to recieve status updates (like when the bot goes online).
-        3. Try any of the `/fx` commands! Misty is intended for quick on the fly reference to Forex Factory during conversation. 
-
-    👋 Thanks for inviting me!
-    """)
-
-# -------------------------------------------
 
 '''
 FX interval refers to how often scraper.py is used to retrieve information. The other is a general interval for various usecases.
@@ -187,83 +174,20 @@ async def system_refresh_loop():
             if market_open_msg == 0: 
                 if datetime.now().hour == 9 and datetime.now().minute == 30 and curr_day not in off_days:
                     timestamp = datetime.now().strftime("%I:%M %p EST")
-                    
-                    embed = discord.Embed(
-                        title="🔔 US Market Open Alert! 🔔",
-                        description="The **NYSE** and **Nasdaq** are officially **OPEN** for business at 9:30 AM EST! The session is underway.",
-                        color=discord.Color.gold()
-                    )
-                    
-                    embed.add_field(
-                        name="✅ Pre-Trade Reminders:",
-                        value="Be sure to stick to your trading strategy!",
-                        inline=False
-                    )
-                    
-                    embed.add_field(
-                        name="📰 News Check",
-                        value="Review any last-minute economic or company news.",
-                        inline=True
-                    )
-                    
-                    embed.add_field(
-                        name="📊 Indices Check",
-                        value="Note the current direction of major benchmarks (S&P 500, Nasdaq).",
-                        inline=True
-                    )
-                    
-                    embed.add_field(
-                        name="🛑 Risk Management",
-                        value="Confirm your stop-losses and position sizing before executing trades.",
-                        inline=True
-                    )
-                    
-                    embed.set_footer(text=f"Good luck and happy trading! | Sent: {timestamp}")
-
-                    await channel.send(embed=embed) # type: ignore
-                    market_open_msg += 1
-
-            if market_close_msg == 0:
-                if datetime.now().hour == 4 and datetime.now().minute == 00 and curr_day not in off_days:
-                    timestamp = datetime.now().strftime("%I:%M %p EST")
-                    
-                    embed = discord.Embed(
-                        title="🔔 Market Close: Trading Day Complete! 🔔",
-                        description="The **NYSE** and **Nasdaq** regular trading sessions are officially **CLOSED** at 4:00 PM EST. The floor is quiet, but the analysis begins!",
-                        color=discord.Color.dark_purple() 
-                    )
-                    
-                    embed.add_field(
-                        name="📝 End-of-Day Checklist:",
-                        value="Focus now shifts to review, logging, and planning for tomorrow.",
-                        inline=False
-                    )
-                    
-                    embed.add_field(
-                        name="📋 Trade Journaling",
-                        value="Log all executed trades, noting your rationale, outcome, and emotional state.",
-                        inline=True
-                    )
-                    
-                    embed.add_field(
-                        name="📉 Daily Review",
-                        value="Analyze key price action, volume, and major economic data releases.",
-                        inline=True
-                    )
-                    
-                    embed.add_field(
-                        name="🗓️ Tomorrow's Prep",
-                        value="Identify potential movers and update your watchlist for the next open.",
-                        inline=False
-                    )
-                    
-                    embed.set_footer(text=f"Session officially concluded at 4:00 PM EST | Sent: {timestamp}")
+                    embed = other_embeds.market_open.createEmbed(timestamp)
 
                     await channel.send(embed=embed) # type: ignore
                     market_close_msg += 1
+                
+                if market_close_msg == 0:
+                    if datetime.now().hour == 4 and datetime.now().minute == 00 and curr_day not in off_days:
+                        timestamp = datetime.now().strftime("%I:%M %p EST")
+                        embed = other_embeds.market_close.createEmbed(timestamp)
 
-      
-        # Pass the announcement if no announcement channel is set.
+                        await channel.send(embed=embed) # type: ignore
+                        market_close_msg += 1
+
+        # Ignore the announcement if no announcement channel is set.
         else:
             pass
 
@@ -279,20 +203,7 @@ async def send_activation_message():
         target = client.get_channel(int(id))
 
         if target:
-            print(target)
-
-            embed = discord.Embed(
-                title="✨ Misty Online! 🚀",
-                description="I'm officially connected and ready to assist your server!",
-                color=0x7289DA
-            )
-            
-            embed.add_field(
-                name="Need help?",
-                value="Try running `/misty-help` to see what I can do!",
-                inline=False
-            )
-
+            embed = other_embeds.bot_online.createEmbed()
             await target.send(embed=embed) # type: ignore
     
 
@@ -322,282 +233,13 @@ async def on_guild_join(guild: discord.Guild):
     target_channel = guild.system_channel
 
     if target_channel:
-        await target_channel.send(startup_message)
+        embed = other_embeds.bot_joined.createEmbed()
+        await target_channel.send(embed=embed)
 
 # COMMAND EVENTS
-@tree.command(
-    name="debug-check-data", 
-    description="Debug: Used to check what info Misty recieved from MongoDB."
-)
-async def data_check(interaction: discord.Interaction, authkey: str):
-    if authkey == f"{key3}":
-        data = mongoHelpers.get_all_news(collection_file=fx_collection)
 
-        print(fx_collection, " <--- should be checking")
-        print(data,' <-- recieved') 
-
-        channel = interaction.channel
-
-        await channel.send(f'curr server_id: {interaction.guild_id}') # type: ignore
-    else:
-        await interaction.response.send_message(f"Hello, {interaction.user.mention}! Your debug key is invalid.", ephemeral=False)
-
-@tree.command(
-    name="misty-help", 
-    description="Sends a list of commands and a description of what they do."
-)
-async def send_help(interaction: discord.Interaction):
-
-    # 🖼️ Create the main embed object
-    embed = discord.Embed(
-        title="Misty's Command Guide",
-        description="Thanks for inviting Misty! Here's a breakdown of her commands and functionality.",
-        color=discord.Color.yellow()
-    )
-
-    # --- Information Note Section ---
-    embed.add_field(
-        name="ℹ️ A Quick Note on `/fx` Commands",
-        value=(
-            "All commands with the suffix `/fx` scrape **ForexFactory.com** for scheduled news and insights. "
-            "These events help traders gauge market safety and potential volatility."
-        ),
-        inline=False
-    )
-    
-    # --- Setup Commands Section ---
-    setup_commands = (
-        "**`/register`**\n"
-        "Registers you with our database. This is **REQUIRED** for announcement channel persistence and future features.\n\n"
-        "**`/set-announcement`**\n"
-        "Dictates where Misty will send automated messages (online status, market open announcements, etc.). "
-        "**PLEASE SET THIS** to avoid missing important status updates!"
-    )
-    embed.add_field(
-        name="🛠️ Setup Commands (PLEASE DO THESE FIRST)",
-        value=setup_commands,
-        inline=False
-    )
-
-    # --- ForexFactory Commands Section ---
-    fx_commands = (
-        "**`/fx-all-news`**\n"
-        "Returns all news events scheduled for today.\n\n"
-        "**`/fx-high-impact`**\n"
-        "Returns only **HIGH IMPACT** news scheduled today (usually defines market volatility).\n\n"
-        "**`/fx-currency-lookup <currency>`**\n"
-        "Filters to show news only pertaining to the chosen currency. Ex: `USD`.\n\n"
-        "**`/fx-pair-lookup <pair>`**\n"
-        "Filters to show news for a given currency pair. Ex: `EUR/USD`.\n\n"
-        "**`/fx-last-update`**\n"
-        "Check when Misty last scraped data from Forex Factory."
-    )
-    embed.add_field(
-        name="📊 ForexFactory Commands",
-        value=fx_commands,
-        inline=False
-    )
-
-    # --- Other Commands Section ---
-    embed.add_field(
-        name="⏳ Other Commands",
-        value="Still under construction. Stay tuned for new features!",
-        inline=False
-    )
-    
-    # ⬇️ Send the embed as a response to the interaction
-    await interaction.response.send_message(embed=embed, ephemeral=False)
-
-
-@tree.command(
-    name="debug-force-update", 
-    description="Debug: Force Misty to retrieve latest ForexFactory data."
-)
-async def force_update(interaction: discord.Interaction, authkey: str):
-    
-    print('FORCING UPDATE')
-    print(authkey, key3)
-    print(type(key3))
-    
-    if authkey == key3:
-
-        # Create an Embed for successful update
-        success_embed = discord.Embed(
-            title="✅ Update Forced Successfully",
-            description="Misty is now retrieving the latest ForexFactory data.",
-            color=discord.Color.green() 
-        )
-        success_embed.add_field(
-            name="Confirmation", 
-            value="Check the console output or MongoDB for confirmation of the updated data.", 
-            inline=False
-        )
-        
-        # Send the success Embed
-        await interaction.response.send_message(embed=success_embed, ephemeral=False)
-
-        result = subprocess.run([sys.executable, '../services/scraper.py'], capture_output=True, text=True)
-            
-    else:
-        # Create an Embed for invalid key
-        error_embed = discord.Embed(
-            title="❌ Debug Key Invalid",
-            description=f"Hello, {interaction.user.mention}! The authentication key you provided is incorrect.",
-            color=discord.Color.red()
-        )
-            
-        error_embed.add_field(
-            name="Required Key", 
-            value="Please ensure you are using the correct debug key.", 
-            inline=False
-        )
-        
-        # Send the error Embed
-        await interaction.response.send_message(embed=error_embed, ephemeral=False)
-
-
-@tree.command(
-        name="define-strategy",
-        description="Create a strategy for Misty to backtest!"
-)
-async def define_strategy(interaction: discord.Interaction, strategy_name: str, indicator1: str, time_period1: str, indicator2: str, time_period2: str, buy_condition: str, sell_condition: str):
-    
-    """
-    Note: I know this is super tedious and doesn't allow for many strategies or complex capabilities but this is the only option I could think of without
-    having to learn NLP and creating an algorithm for it. That could take me months to implement from scratch. The other option is feeding into an LLM but 
-    that's not very helpful either given AI hallucinations and generally just variance in response.
-
-    So keeping that in mind, the resulting command is a very rigid proof of concept.
-    Lets begin by making a json object for this information.
-    """
-
-    strategy = {
-        f"{strategy_name}": {
-
-            "indicators": [
-                {
-                    "id": "indicator1", 
-                    "type": f"{indicator1}", 
-                    "time-period1": f"{time_period1}"
-                },
-                {
-                    "id": "indicator1", 
-                    "type": f"{indicator2}", 
-                    "time-period1": f"{time_period2}"
-                },
-            ],
-
-            "rules": {
-                "buy": f"{buy_condition}",
-                "sell": f"{sell_condition}"
-            }
-        }
-    }
-
-    # obtaining guild id for helper
-    guild = interaction.guild_id
-    try:
-        result = mongoHelpers.set_new_strategy(collection_file=server_collection, strategy_object=strategy, guild_id=guild)
-    except Exception as e:
-        print(f"error: {e}")
-
-    await interaction.response.send_message(f"set strategy response: {result}")
-
-
-@tree.command(
-    name="backtest-strategy", 
-    description="Have Misty generate a report on any of the servers saved strategies!"
-)
-async def backtest(interaction: discord.Interaction, strategy_name: str, timeframe: str, years: str):
-    server = interaction.guild_id
-    response = yfinanceHelpers.backtest_strategy(collection_file=server_collection, strategy_name=strategy_name, timeframe=timeframe, guild_id=server, duration_years=years)
-
-    await interaction.response.send_message(response)
-
-@tree.command(
-    name="pip-check",
-    description="type: EURUSD"
-)
-async def pipcheck(interaction: discord.Interaction, pair: str):
-    chosen_pair = pair
-    pipval = yfinanceHelpers.calculate_pip_value(chosen_pair)   
-    await interaction.response.send_message(pipval)
-
-@tree.command(
-    name="risk-calculation",
-    description="Have Misty generate the correct lot size for your positon based on your risk tolerance."
-)
-async def risk_calc(interaction: discord.Interaction, pair: str, equity: float, entry_price: float, stop_loss: float, risk_percentage: float):
-
-    account_equity = equity
-
-    if risk_percentage <= 0 or account_equity <= 0:
-        await interaction.response.send_message(
-            "**Error:** Risk percentage and Account Equity must be positive values.", 
-            ephemeral=True
-        )
-        return
-    else:
-        risk_amount = account_equity * (risk_percentage / 100)
-        risk_pips = abs(entry_price - stop_loss) * 10000  # assuming its a 4-decimal pair for simplicity.
-        pip_size = yfinanceHelpers.calculate_pip_value(pair)
-
-        if risk_pips == 0:
-            await interaction.response.send_message(
-                "**Error:** Entry Price and Stop Loss Price cannot be the same. Risk in pips is zero.",
-                ephemeral=True
-            )
-            return
-        else:
-            
-            # Denominator: Monetary value of the trade risk, assuming 1 Standard Lot
-            monetary_risk_per_standard_lot = risk_pips * pip_size
-
-            # Final Lot Size (in standard lots: 1.0 = 100,000 units)
-            lot_size = risk_amount / monetary_risk_per_standard_lot
-    
-            embed = discord.Embed(
-                title="💰Position Size Calculation",
-                description=f"Risk Management for **{pair.upper()}**",
-                color=discord.Color.green()
-            )
-            embed.add_field(name="Account Equity", value=f"${account_equity:,.2f}", inline=True)
-            embed.add_field(name="Risk % Defined", value=f"{risk_percentage}%", inline=True)
-            embed.add_field(name="Monetary Risk", value=f"${risk_amount:,.2f}", inline=True)
-            embed.add_field(name="Pip Size", value=f"{pip_size:.1f} pips", inline=True)
-            embed.add_field(name="Risk in Pips", value=f"{risk_pips:.1f} pips", inline=True)
-            embed.add_field(name="Lot Size (Standard Lots)", value=f"**{lot_size:.2f}** lots", inline=True)
-            embed.set_footer(text="Disclaimer: Calculation uses a standard lot size of 100,000 units and assumes a 4 decimal pair. For non standard pairs like those including JPY, this tool won't give the expected results.")
-
-            # Application commands require a response (interaction.response.send_message)
-            # Use ephemeral=False to make the message visible to everyone in the channel
-            await interaction.response.send_message(embed=embed, ephemeral=False)
-
-@tree.command(
-    name="fx-last-update", 
-    description="ForexFactory: Fetches the timestamp of the last time Misty scraped Forex Factory."
-)
-async def last_update(interaction: discord.Interaction):
-    last_update = mongoHelpers.get_last_timestamp(collection_file=fx_collection)
-
-    update_embed = discord.Embed(
-        title="🗓️ Last Forex Factory Scrape Time",
-        description=f"The latest data retrieved by Misty is from the following time:",
-        color=discord.Color.blue() # A calming blue color
-    )
-    
-    update_embed.add_field(
-        name="Last Scrape Timestamp",
-        value=f"**{last_update}**",
-        inline=False
-    )
-    
-    update_embed.set_footer(
-        text=f"Requested by {interaction.user.display_name}", 
-        icon_url=interaction.user.display_avatar.url
-    )
-
-    await interaction.response.send_message(embed=update_embed, ephemeral=False)
+# ----- SETUP COMMANDS ------
+# Not to be moved into commands, very finicky, dont want to debug.
 
 @tree.command(
     name="register", 
@@ -658,7 +300,6 @@ async def guild_register(interaction: discord.Interaction, server_id: str, serve
         )
         
         await interaction.response.send_message(embed=error_embed, ephemeral=False)
-
 
 @tree.command(
     name="set-announcement-channel", 
@@ -734,66 +375,122 @@ async def set_announcement(interaction: discord.Interaction, channel_id: str, se
             
             await interaction.response.send_message(embed=channel_error_embed, ephemeral=True)
 
+# ---- END OF SETUP COMMANDS -----
+
+@tree.command(
+    name="misty-help", 
+    description="Sends a list of commands and a description of what they do."
+)
+async def send_help(interaction: discord.Interaction):
+    embed = commands.misty_help.createEmbed()
+    await interaction.response.send_message(embed=embed, ephemeral=False)
+
+
+# Not being moved to commands until it is finished.
+@tree.command(
+        name="define-strategy",
+        description="Create a strategy for Misty to backtest!"
+)
+async def define_strategy(interaction: discord.Interaction, strategy_name: str, indicator1: str, time_period1: str, indicator2: str, time_period2: str, buy_condition: str, sell_condition: str):
+    
+    """
+    Note: I know this is super tedious and doesn't allow for many strategies or complex capabilities but this is the only option I could think of without
+    having to learn NLP and creating an algorithm for it. That could take me months to implement from scratch. The other option is feeding into an LLM but 
+    that's not very helpful either given AI hallucinations and generally just variance in response.
+
+    So keeping that in mind, the resulting command is a very rigid proof of concept.
+    Lets begin by making a json object for this information.
+    """
+
+    strategy = {
+        f"{strategy_name}": {
+
+            "indicators": [
+                {
+                    "id": "indicator1", 
+                    "type": f"{indicator1}", 
+                    "time-period1": f"{time_period1}"
+                },
+                {
+                    "id": "indicator1", 
+                    "type": f"{indicator2}", 
+                    "time-period1": f"{time_period2}"
+                },
+            ],
+
+            "rules": {
+                "buy": f"{buy_condition}",
+                "sell": f"{sell_condition}"
+            }
+        }
+    }
+
+    # obtaining guild id for helper
+    guild = interaction.guild_id
+    try:
+        result = mongoHelpers.set_new_strategy(collection_file=server_collection, strategy_object=strategy, guild_id=guild)
+    except Exception as e:
+        print(f"error: {e}")
+
+    await interaction.response.send_message(f"set strategy response: {result}")
+
+
+# Not being moved to commands until it is finished.
+@tree.command(
+    name="backtest-strategy", 
+    description="Have Misty generate a report on any of the servers saved strategies!"
+)
+async def backtest(interaction: discord.Interaction, strategy_name: str, timeframe: str, years: str):
+    server = interaction.guild_id
+    response = yfinanceHelpers.backtest_strategy(collection_file=server_collection, strategy_name=strategy_name, timeframe=timeframe, guild_id=server, duration_years=years)
+
+    await interaction.response.send_message(response)
+
+
+@tree.command(
+    name="risk-calculation",
+    description="Have Misty generate the correct lot size for your positon based on your risk tolerance."
+)
+async def risk_calc(interaction: discord.Interaction, pair: str, equity: float, entry_price: float, stop_loss: float, risk_percentage: float):
+
+    account_equity = equity
+
+    if risk_percentage <= 0 or account_equity <= 0:
+        await interaction.response.send_message(
+            "**Error:** Risk percentage and Account Equity must be positive values.", 
+            ephemeral=True
+        )
+        return
+    else:
+        risk_pips = abs(entry_price - stop_loss) * 10000  # assuming its a 4-decimal pair for simplicity.
+
+        if risk_pips == 0:
+            await interaction.response.send_message(
+                "**Error:** Entry Price and Stop Loss Price cannot be the same. Risk in pips is zero.",
+                ephemeral=True
+            )
+            return
+        else:
+            embed = commands.risk_calculation.createEmbed(yfinanceHelpers, equity, risk_percentage, entry_price, stop_loss, pair)
+            await interaction.response.send_message(embed=embed, ephemeral=False)
+
+
+@tree.command(
+    name="fx-last-update", 
+    description="ForexFactory: Fetches the timestamp of the last time Misty scraped Forex Factory."
+)
+async def last_update(interaction: discord.Interaction):
+    embed = commands.fx_last_update.createEmbed(mongoHelpers, fx_collection, interaction)
+    await interaction.response.send_message(embed=embed, ephemeral=False)
+
+
 @tree.command(
     name="fx-all-news", 
     description="ForexFactory: Quickly reference today's scheduled news."
 )                   
 async def sendAll(interaction: discord.Interaction):
-
-    data = mongoHelpers.get_all_news(collection_file=fx_collection)   
-
-    # not including the first document since its a timestamp, NOT an event entry.
-    data = data[1:]
-
-    my_embed = discord.Embed(
-        title=f"MARKET VOLATILITY - All News:",
-        description=f"All news events scheduled for the next 24 hours.",
-        url="https://www.forexfactory.com",
-
-        # documentation for all of the included colors: 
-        color=discord.Color.blue(),
-    )
-
-    # Navigating to image:
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    icon_asset_path = os.path.join(script_dir, 'assets', 'fx_factory_icon.png')
-    icon = discord.File(icon_asset_path, filename="fx_icon.png") 
-    my_embed.set_thumbnail(url="attachment://fx_icon.png")
-    
-    for event in data:
-
-        emj = None
-        
-        if event['impact-level'] == "High Impact Expected":
-            emj = "🔴"
-        elif event['impact-level'] == "Medium Impact Expected":
-            emj = "🟠"
-        elif event['impact-level'] == "Low Impact Expected":
-            emj = "🟡"
-        else:
-            emj = "⚪"
-
-        if event['time-occured'] == '':
-            event['time-occured'] = 'N/A'
-
-        if event['actual'] == '' and event['forecast'] == '' and event['previous'] == '':
-            my_embed.add_field(
-                name=f"{emj} {event['currency-impacted']} - {event['event-title']}",
-                value=f"Time Scheduled: {event['time-occured']}",
-                inline=True
-            )
-        else:
-            my_embed.add_field(
-                name=f"{emj} {event['currency-impacted']} - {event['event-title']}",
-                value=f"Actual: {event['actual']}    Forecast: {event['forecast']}    Previous: {event['previous']}\nTime Scheduled: {event['time-occured']}",
-                inline=False
-            )
-
-
-    # bottom text
-    my_embed.set_footer(text="Data is scraped from Forex Factory and is provided for informational purposes only.")
-    my_embed.set_author(name="🌐 Forex Factory", url="https://www.forexfactory.com", icon_url="attachment://indicator.png")
-    await interaction.response.send_message(embed=my_embed, files=[icon])
+    embed, icon = commands.fx_all_news.createEmbed(mongoHelpers, fx_collection)
+    await interaction.response.send_message(embed=embed, files=[icon])
 
 
 @tree.command(
@@ -805,61 +502,8 @@ async def sendSpecificCurrency(interaction: discord.Interaction, currency: str):
     if currency.upper() not in forex_currencies:
             await interaction.response.send_message(f'Hey {interaction.user.mention} you wrote: "{currency}" which is not a tracked currency.\nHere is a list of currencies ForexFactory tracks:\n{forex_currencies}')
     else:
-        data = mongoHelpers.currency_specific_news(collection_file=fx_collection, currency=currency.upper())   
-        
-        my_embed = discord.Embed(
-            title=f"MARKET VOLATILITY - {currency.upper()} News:",
-            description=f"All news events pertaining to {currency.upper()} for the next 24 hours.",
-            url="https://www.forexfactory.com",
-
-            # documentation for all of the included colors: 
-            color=discord.Color.blue(),
-        )
-        
-        if currency in missing_icons:
-            currency = 'ALL'
-            
-        script_dir = os.path.dirname(os.path.abspath(__file__))
-        icon_asset_path = os.path.join(script_dir, 'assets', f'{currency}.png')
-        icon = discord.File(icon_asset_path, filename="fx_icon.png") 
-
-        my_embed.set_thumbnail(url="attachment://fx_icon.png")
-
-        for event in data:
-
-            emj = None
-            
-            if event['impact-level'] == "High Impact Expected":
-                emj = "🔴"
-            elif event['impact-level'] == "Medium Impact Expected":
-                emj = "🟠"
-            elif event['impact-level'] == "Low Impact Expected":
-                emj = "🟡"
-            else:
-                emj = "⚪"
-
-            if event['time-occured'] == '':
-                event['time-occured'] = 'N/A'
-
-            if event['actual'] == '' and event['forecast'] == '' and event['previous'] == '':
-                my_embed.add_field(
-                    name=f"{emj} {event['event-title']}",
-                    value=f"Time Scheduled: {event['time-occured']}",
-                    inline=True
-                )
-            else:
-                my_embed.add_field(
-                    name=f"{emj} {event['event-title']}",
-                    value=f"Actual: {event['actual']}    Forecast: {event['forecast']}    Previous: {event['previous']}\nTime Scheduled: {event['time-occured']}",
-                    inline=False
-                )
-
-
-        my_embed.set_footer(text="Data is scraped from Forex Factory and is provided for informational purposes only.")
-        
-        my_embed.set_author(name="🌐 Forex Factory", url="https://www.forexfactory.com", icon_url="attachment://indicator.png")
-        
-        await interaction.response.send_message(embed=my_embed, files=[icon])
+        embed, icon = commands.fx_currency_lookup.createEmbed(mongoHelpers, fx_collection, currency, missing_icons, script_dir)
+        await interaction.response.send_message(embed=embed, files=[icon])
 
 
 @tree.command(
@@ -875,55 +519,8 @@ async def sendPair(interaction: discord.Interaction, base_currency: str, quote_c
         await interaction.response.send_message(f'Hey {interaction.user.mention} One of the currencies you gave are a tracked currency.\nHere is a list of currencies ForexFactory tracks:\n{forex_currencies}')
 
     else:
-        data = mongoHelpers.pair_specific_news(collection_file=fx_collection, currency1=base_currency.upper(), currency2=quote_currency.upper())   
-        print(data)
-        
-        my_embed = discord.Embed(
-            title=f"MARKET VOLATILITY - {base_currency}/{quote_currency} News:",
-            description=f"All news events pertaining to your chosen pair in the next 24 hours.",
-            url="https://www.forexfactory.com",
-
-            color=discord.Color.blue(),
-        )
-
-        script_dir = os.path.dirname(os.path.abspath(__file__))
-        icon_asset_path = os.path.join(script_dir, 'assets', 'fx_factory_icon.png')
-        icon = discord.File(icon_asset_path, filename="fx_icon.png") 
-
-        my_embed.set_thumbnail(url="attachment://fx_icon.png")
-
-        for event in data:
-
-            emj = None
-            
-            if event['impact-level'] == "High Impact Expected":
-                emj = "🔴"
-            elif event['impact-level'] == "Medium Impact Expected":
-                emj = "🟠"
-            elif event['impact-level'] == "Low Impact Expected":
-                emj = "🟡"
-            else:
-                emj = "⚪"
-
-            if event['time-occured'] == '':
-                event['time-occured'] = 'N/A'
-
-            if event['actual'] == '' and event['forecast'] == '' and event['previous'] == '':
-                my_embed.add_field(
-                    name=f"{emj} {event['currency-impacted']} - {event['event-title']}",
-                    value=f"Time Scheduled: {event['time-occured']}",
-                    inline=True
-                )
-            else:
-                my_embed.add_field(
-                    name=f"{emj} {event['currency-impacted']} - {event['event-title']}",
-                    value=f"Actual: {event['actual']}    Forecast: {event['forecast']}    Previous: {event['previous']}\nTime Scheduled: {event['time-occured']}",
-                    inline=False
-                )
-
-        my_embed.set_footer(text="Data is scraped from Forex Factory and is provided for informational purposes only.")
-        my_embed.set_author(name="🌐 Forex Factory", url="https://www.forexfactory.com", icon_url="attachment://indicator.png")
-        await interaction.response.send_message(embed=my_embed, files=[icon])
+        embed, icon = commands.fx_pair_lookup.createEmbed(mongoHelpers, fx_collection, base_currency, quote_currency, script_dir)
+        await interaction.response.send_message(embed=embed, files=[icon])
 
 
 @tree.command(
@@ -931,139 +528,17 @@ async def sendPair(interaction: discord.Interaction, base_currency: str, quote_c
     description="ForexFactory: Quickly reference today's high-impact forex news."
 )
 async def sendHighImpact(interaction: discord.Interaction):
-
-    data = mongoHelpers.high_impact_news(collection_file=fx_collection)
-
-    # Other information such as the embed thumbnail, fields, and author is not set here. Its set in their own functions.
-    my_embed = discord.Embed(
-        title="MARKET VOLATILITY - High-Impact News:",
-        description="All Red Folder events scheduled for the next 24 hours.",
-        url="https://www.forexfactory.com",
-
-        # documentation for all of the included colors: 
-        color=discord.Color.blue(),
-    )
-
-    # Navigating to image:
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    icon_asset_path = os.path.join(script_dir, 'assets', 'fx_factory_icon.png')
-    icon = discord.File(icon_asset_path, filename="fx_icon.png") 
-
-    # Adding an image to an embed. Will appear in the top right corner of the message.
-    my_embed.set_thumbnail(url="attachment://fx_icon.png")
-    
-    for event in data:
-        if event['time-occured'] == '':
-            event['time-occured'] = 'N/A'
-
-        my_embed.add_field(
-            name=f"{event['currency-impacted']}  -  {event['event-title']}",
-            value=f"Actual: {event['actual']}  Forecast: {event['forecast']}  Previous: {event['previous']}\nTime Scheduled: {event['time-occured']}",
-            inline=False
-        )
-
-    # bottom text
-    my_embed.set_footer(text="Data is scraped from Forex Factory and is provided for informational purposes only.")
-    
-    # image appears on top left. then the author name. the author name will have a link attached.
-    my_embed.set_author(name="🌐 Forex Factory", url="https://www.forexfactory.com", icon_url="attachment://indicator.png")
-
-    await interaction.response.send_message(embed=my_embed, files=[icon])
-
-
-# To render a button OR a GROUP of buttons we need to write a class to handle that specific situation
-class View(discord.ui.View):
-    # This line creates the button which is generated by the function on_button_click() which is defined below it.
-    # All buttons need to have a function attached or else this line alone will be highlighted squiggly/incorrect syntax
-    @discord.ui.button(label="Click Me", style=discord.ButtonStyle.success, emoji="✅")
-
-    # You MUST pass: self, button, and interaction. 
-    async def on_success_click(self, button, interaction):
-        # Here is where you can determine how the bot responds 
-        await button.response.send_message(f"Button was clicked.")
-    
-
-    # To render more than one button you literally just copy and paste the same structure and edit as need:
-
-    @discord.ui.button(label="Click Me", style=discord.ButtonStyle.danger, emoji="❌")
-    async def on_failure_click(self, button, interaction):
-        await button.response.send_message(f"Button was clicked.")
-
-    @discord.ui.button(label="Click Me", style=discord.ButtonStyle.primary, emoji="⚙️")
-    async def on_premium_click(self, button, interaction):
-        await button.response.send_message(f"Button was clicked.")
-    
-
-@tree.command(
-    name="send-button",
-    description="Gives you something to click on"
-)
-async def sendButton(interaction: discord.Interaction):
-    # To get the button to send as response to this command you pass the "View()" class we previously defined to the send_message portion:
-    await interaction.response.send_message(view=View())
+    embed, icon = commands.fx_high_impact.createEmbed(mongoHelpers, fx_collection, script_dir)
+    await interaction.response.send_message(embed=embed, files=[icon])
 
 
 @tree.command(
     name="embed-with-button",
     description="sends an embed that also has a button"
 )
-async def sendButtonEmbed(interaction: discord.Interaction):
-    button_embed = discord.Embed(
-        title="Placeholder Embed",
-        description="This is a placeholder embed. Click this button!"
-    )
-
-    await interaction.response.send_message(embed=button_embed, view=View())
-
-# --- DROPDOWN MENU ---
-
-# To build a dropdown menu you need to make a class view for the menu itself. THEN a class view for the dropdowns. Then link it to a command.
-
-# Dropdown menu class:
-class Dropdown(discord.ui.Select):
-    def __init__(self):
-
-        # options which will be passed to the menu
-        drop_down_options = [
-            discord.SelectOption(
-                label="Option 1",
-                value="Description of option 1",
-                emoji="⚫"
-            ),
-
-            discord.SelectOption(
-                label="Option 2",
-                value="Description of option 2",
-                emoji="⚫"
-            ),
-
-            discord.SelectOption(
-                label="Option 3",
-                value="Description of option 3",
-                emoji="⚫"
-            )
-        ]
-
-        # responsible for the placeholder text that shows before the user clicked the dropdown
-        # also responsible for letting you pick 1 or more values. For a normal dropdown only allow one at a time.
-        super().__init__(placeholder="Please choose an option:", min_values=1, max_values=1, options=drop_down_options)
-
-    # this function must be called callback (DO NOT CHANGE)
-    async def callback(self, interaction: discord.Interaction):
-        await interaction.response.send_message(f"{self.values[0]}")
-
-# Overarching menu class:
-class MenuView(discord.ui.View):
-    def __init__(self):
-        super().__init__()
-        self.add_item(Dropdown())
-
-@tree.command(
-    name="send-dropdown-menu",
-    description="sends a dropdown menu for you to interact with"
-)
-async def sendDropDown(interaction: discord.Interaction):
-    await interaction.response.send_message(view=MenuView(), delete_after=(5))
+async def sendEmbedButton(interaction: discord.Interaction):
+    embed, View = commands.buttontest.testCreateButtonEmbed()
+    await interaction.response.send_message(embed=embed, view=View) # type: ignore
 
 
 client.run(token=str(key))
