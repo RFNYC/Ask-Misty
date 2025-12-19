@@ -18,7 +18,6 @@ from . import buttontest
 from . import fx_high_impact
 from . import fx_pair_lookup
 from . import fx_currency_lookup
-from . import fx_all_news
 from . import fx_last_update
 from . import misty_help
 from . import risk_calculation

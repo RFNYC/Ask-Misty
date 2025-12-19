@@ -382,8 +382,36 @@ async def set_announcement(interaction: discord.Interaction, channel_id: str, se
     description="Sends a list of commands and a description of what they do."
 )
 async def send_help(interaction: discord.Interaction):
-    embed = commands.misty_help.createEmbed()
-    await interaction.response.send_message(embed=embed, ephemeral=False)
+    # Page numbers are hardcoded, im lazy and this wont get updated that often where it has to be dynamic
+    page_number = 0
+
+    class MenuButtons(discord.ui.View):
+        @discord.ui.button(label="Previous", style=discord.ButtonStyle.secondary)
+        async def previous_button_callback(self, interaction: discord.Interaction, button):
+            nonlocal page_number
+            if page_number == 0:
+                pass
+            else:
+                page_number -= 1
+                embed = commands.misty_help.createEmbed(page_number)
+                await interaction.response.edit_message(embed=embed, view=MenuButtons())
+    
+        @discord.ui.button(label="Next", style=discord.ButtonStyle.primary)
+        async def next_button_callback(self, interaction: discord.Interaction, button):
+            nonlocal page_number
+            if page_number == 1:
+                pass
+            else:
+                page_number += 1
+                embed = commands.misty_help.createEmbed(page_number)
+                await interaction.response.edit_message(embed=embed, view=MenuButtons())
+
+            embed = commands.misty_help.createEmbed(page_number)
+            await interaction.response.edit_message(embed=embed, view=MenuButtons())
+
+    embed = commands.misty_help.createEmbed(page_number)
+    # saving await responses to variables allows you to manipulate it later, ex: sent_message.edit()
+    sent_message = await interaction.response.send_message(embed=embed, view=MenuButtons())
 
 
 # Not being moved to commands until it is finished.
@@ -482,16 +510,7 @@ async def risk_calc(interaction: discord.Interaction, pair: str, equity: float, 
 async def last_update(interaction: discord.Interaction):
     embed = commands.fx_last_update.createEmbed(mongoHelpers, fx_collection, interaction)
     await interaction.response.send_message(embed=embed, ephemeral=False)
-
-
-@tree.command(
-    name="fx-all-news", 
-    description="ForexFactory: Quickly reference today's scheduled news."
-)                   
-async def sendAll(interaction: discord.Interaction):
-    embed, icon = commands.fx_all_news.createEmbed(mongoHelpers, fx_collection)
-    await interaction.response.send_message(embed=embed, files=[icon])
-
+    
 
 @tree.command(
     name="fx-currency-lookup", 
