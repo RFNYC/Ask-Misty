@@ -1,0 +1,40 @@
+[
+    {
+        "Page": {
+            "Field1": {
+                "name": "ℹ️ A Quick Note on `/fx` Commands",
+                "value": "All commands with the suffix `/fx` scrape **ForexFactory.com** for scheduled news and insights. These events help traders gauge market safety and potential volatility.",
+                "inline": false
+            },
+            "Field2": {
+                "name": "🛠️ Setup Commands (PLEASE DO THESE FIRST)",
+                "value": "**`/register`**\nRegisters you with our database. This is **REQUIRED** for announcement channel persistence and future features.\n\n**`/set-announcement-channel`**\nDictates where Misty will send automated messages (online status, market open announcements, etc.). **PLEASE SET THIS** to avoid missing important status updates!",
+                "inline": false
+            },
+            "Field3": {
+                "name": "📊 ForexFactory Commands",
+                "value": "**`/fx-high-impact`**\nReturns only *HIGH IMPACT* news scheduled today.\n\n**`/fx-currency-lookup <currency>`**\nFilters news by currency (e.g., `USD`).\n\n**`/fx-pair-lookup <pair>`**\nFilters news by pair (e.g., `EUR/USD`).",
+                "inline": false
+            }
+        }
+    },
+    {
+        "Page": {
+            "Field1": {
+                "name": "📈 Trading Strategy (Proof of Concept)",
+                "value": "**`/define-strategy`**\nDefine a simple trading strategy to backtest. It is saved to Misty's database and persists for this server. This is an extremely restricted approach intended as a proof of concept.\n\n**`/backtest-strategy`**\nMisty will run your strategy in our custom engine. Due to Discord and hardware limitations, it uses a vectorized approach which is less accurate. Currently limited to the **S&P 500** as other data sources are costly/difficult to implement.",
+                "inline": false
+            },
+            "Field2": {
+                "name": "🧮 Risk Management",
+                "value": "**`/risk-calculation`**\nGenerates ideal position size based on risk tolerance. Works with majors like EURUSD, GBPUSD, AUDUSD, USDCAD, etc.\n\n⚠️ **Disclaimer:** Calculation uses a standard lot size of 100,000 units and assumes a 4-decimal pair. For non-standard pairs (like those including **JPY**), this tool will not give expected results.",
+                "inline": false
+            },
+            "Field3": {
+                "name": "⌛ Other Commands",
+                "value": "Still under construction. Stay tuned for new features!",
+                "inline": false
+            }
+        }
+    }
+]
