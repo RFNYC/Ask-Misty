@@ -1,0 +1,21 @@
+[
+    {
+        "title": "FX NOTE",
+        "content": "All commands with the suffix /fx scrape ForexFactory.com for scheduled news and insights. These events help traders gauge market safety and potential volatility. We do not own any of the data scraped. The website is scraped every 10 minutes to check if MONGOKEY parameters such as Actual, Forecasted, and Predicted have been filled in for each event. These parameters are MONGOKEY indicators for how the market responded to an event which is why we try to scrape them in real time as they appear."
+    },
+
+    {
+        "title": "Set Announcement Channel",
+        "content": "Dictates where Misty will send automated messages (online status, market open announcements, etc.). PLEASE SET THIS to avoid missing important status updates! To use this command you need to have used the /register command *first*. After following those steps all you need to do is provide the ID of your chosen announcement channel and the server ID so we can save it to our database."
+    },
+
+    {
+        "title": "Risk Calculation",
+        "content": "Example Usage: /risk-calculation EURUSD | Generates ideal position size based on risk tolerance. Works with majors like EUR/USD, GBP/USD, AUD/USD, USD/CAD, etc. CRITICAL: For this command to work you must type the pair as a single word without a slash inbetween. Any other inputs will cause errors."
+    },
+
+    {
+        "title": "FX COMMANDS",
+        "content": "Forex Factory commands are pretty simple. Every 10 minutes the bot scrapes Forex Factory.com from there the data is transported to MongoDB refreshing its data set periodically. From there you can use the FX commands to interact with that data. You "
+    }
+]
