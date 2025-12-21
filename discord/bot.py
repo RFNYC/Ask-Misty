@@ -1,6 +1,6 @@
 import discord
 import os, asyncio, sys, subprocess, json
-import commands, other_embeds
+import commands, static_messages
 
 from discord import app_commands
 from dotenv import find_dotenv, load_dotenv
@@ -8,6 +8,7 @@ from datetime import datetime
 from pymongo.mongo_client import MongoClient
 from pymongo.server_api import ServerApi
 from helpers import mongoHelpers, yfinanceHelpers
+from rag import build_rag_response
 
 dotenv_path = find_dotenv()
 load_dotenv(dotenv_path)
@@ -27,7 +28,7 @@ try:
 except Exception as e:
     print(e)
 
-# Forex Factory 
+# Forex Factory Information
 fx_database = mongo_client["forex-factory"]
 fx_collection = fx_database['fxdata']
 forex_currencies = ['AUD', 'CAD', 'CHF', 'CNY', 'EUR', 'GBP', 'JPY', 'NZD', 'USD']
@@ -37,6 +38,10 @@ off_days = [6,7]
 # Individual Server Information
 server_database = mongo_client['registry']
 server_collection = server_database['guilds']
+
+# Rag Information
+rag_database = mongo_client['static-info']
+rag_collection = rag_database['vector-embeddings']
 
 # --- DISCORD STUFF ---
 
@@ -174,7 +179,7 @@ async def system_refresh_loop():
             if market_open_msg == 0: 
                 if datetime.now().hour == 9 and datetime.now().minute == 30 and curr_day not in off_days:
                     timestamp = datetime.now().strftime("%I:%M %p EST")
-                    embed = other_embeds.market_open.createEmbed(timestamp)
+                    embed = static_messages.market_open.createEmbed(timestamp)
 
                     await channel.send(embed=embed) # type: ignore
                     market_close_msg += 1
@@ -182,7 +187,7 @@ async def system_refresh_loop():
                 if market_close_msg == 0:
                     if datetime.now().hour == 4 and datetime.now().minute == 00 and curr_day not in off_days:
                         timestamp = datetime.now().strftime("%I:%M %p EST")
-                        embed = other_embeds.market_close.createEmbed(timestamp)
+                        embed = static_messages.market_close.createEmbed(timestamp)
 
                         await channel.send(embed=embed) # type: ignore
                         market_close_msg += 1
@@ -203,7 +208,7 @@ async def send_activation_message():
         target = client.get_channel(int(id))
 
         if target:
-            embed = other_embeds.bot_online.createEmbed()
+            embed = static_messages.bot_online.createEmbed()
             await target.send(embed=embed) # type: ignore
     
 
@@ -233,7 +238,7 @@ async def on_guild_join(guild: discord.Guild):
     target_channel = guild.system_channel
 
     if target_channel:
-        embed = other_embeds.bot_joined.createEmbed()
+        embed = static_messages.bot_joined.createEmbed()
         await target_channel.send(embed=embed)
 
 # COMMAND EVENTS
@@ -406,12 +411,9 @@ async def send_help(interaction: discord.Interaction):
                 embed = commands.misty_help.createEmbed(page_number)
                 await interaction.response.edit_message(embed=embed, view=MenuButtons())
 
-            embed = commands.misty_help.createEmbed(page_number)
-            await interaction.response.edit_message(embed=embed, view=MenuButtons())
-
     embed = commands.misty_help.createEmbed(page_number)
     # saving await responses to variables allows you to manipulate it later, ex: sent_message.edit()
-    sent_message = await interaction.response.send_message(embed=embed, view=MenuButtons())
+    sent_message = await interaction.response.send_message(embed=embed, view=MenuButtons(), delete_after=30)
 
 
 # Not being moved to commands until it is finished.
@@ -552,13 +554,18 @@ async def sendHighImpact(interaction: discord.Interaction):
 
 
 @tree.command(
-    name="embed-with-button",
-    description="sends an embed that also has a button"
+    name="ask-misty",
+    description="If you have any questions about how a command works, or where information is sourced from, just ask!"
 )
-async def sendEmbedButton(interaction: discord.Interaction):
-    embed, View = commands.buttontest.testCreateButtonEmbed()
-    await interaction.response.send_message(embed=embed, view=View) # type: ignore
-
+async def askMisty(interaction: discord.Interaction, question: str):
+    # Required to allow the bot to think. Else bot will time out
+    await interaction.response.defer()
+    try:
+        response = build_rag_response(rag_collection, question)
+        embed = commands.ask_misty.createEmbed(question, response, interaction)
+        await interaction.followup.send(embed=embed)
+    except:
+        await interaction.followup.send("It seems our agent is unavailable right now. In the meantime try: `/misty-help`!")
 
 client.run(token=str(key))
 

@@ -21,3 +21,4 @@ from . import fx_currency_lookup
 from . import fx_last_update
 from . import misty_help
 from . import risk_calculation
+from . import ask_misty

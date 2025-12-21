@@ -5,17 +5,34 @@
     },
 
     {
+        "title": "FX COMMANDS",
+        "content": "Forex Factory commands are pretty simple. Every 10 minutes we scrape ForexFactory.com for new information. From there the data is transported to MongoDB refreshing its data set periodically. After that you can use the FX commands to interact with that data. `/fx-high-impact` filters only the highest impact news, `/fx-currency-lookup <currency>` filter by a single currency, and `/fx-pair-lookup <pair>` allows you to filter news by pair. If you need anymore information you can click the title or head of any of the `/fx` commands and it'll take you to the main site!"
+    },
+
+    {
+        "title": "Register",
+        "content": "Takes: ServerID. The /Register command is used to get a server registered with Misty's Database MongoDB. This must be used before the set announcement command for set announcement to work. This also opens up possibilities for other peristent features and settings in the future."
+    },
+
+    {
         "title": "Set Announcement Channel",
         "content": "Dictates where Misty will send automated messages (online status, market open announcements, etc.). PLEASE SET THIS to avoid missing important status updates! To use this command you need to have used the /register command *first*. After following those steps all you need to do is provide the ID of your chosen announcement channel and the server ID so we can save it to our database."
     },
 
     {
         "title": "Risk Calculation",
-        "content": "Example Usage: /risk-calculation EURUSD | Generates ideal position size based on risk tolerance. Works with majors like EUR/USD, GBP/USD, AUD/USD, USD/CAD, etc. CRITICAL: For this command to work you must type the pair as a single word without a slash inbetween. Any other inputs will cause errors."
+        "content": "Example Usage: /risk-calculation EURUSD | Generates ideal position size based on risk tolerance. Works with majors like EUR/USD, GBP/USD, AUD/USD, USD/CAD, etc. CRITICAL: For this command to work you must type the pair as a single word without a slash inbetween. Any other inputs will cause errors. "
     },
 
     {
-        "title": "FX COMMANDS",
-        "content": "Forex Factory commands are pretty simple. Every 10 minutes the bot scrapes Forex Factory.com from there the data is transported to MongoDB refreshing its data set periodically. From there you can use the FX commands to interact with that data. You "
+        "title": "Backtest Strategy Commands",
+        "content": "Unfortunately both backtesting commands are underconstruction and I can't give any information about them as things are subject to change."
+    },
+
+    {
+        "title": "Ask Misty",
+        "content": "The reason you're able to talk to me or in other words 'ask-misty' is because the developer has implemented a RAG. This allows an LLM to be trained with specific context aimed at building a chatbot which makes your life easier."
     }
+
+
 ]

@@ -68,3 +68,6 @@ for col_name, row_data in embeddings_dict.items():
 # quickly deletes previous sync and inserts a new one.
 collection.delete_many({})
 collection.insert_one(embeddings_package)
+
+print("Successfully synced rag_src.json with MongoDB.")
+
