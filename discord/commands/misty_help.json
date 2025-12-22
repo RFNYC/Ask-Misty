@@ -27,12 +27,12 @@
             },
             "Field2": {
                 "name": "🧮 Risk Management",
-                "value": "**`/risk-calculation`**\nGenerates ideal position size based on risk tolerance. Works with majors like EURUSD, GBPUSD, AUDUSD, USDCAD, etc.\n\n⚠️ **Disclaimer:** Calculation uses a standard lot size of 100,000 units and assumes a 4-decimal pair. For non-standard pairs (like those including **JPY**), this tool will not give expected results.",
+                "value": "**`/risk-calculation`**\nGenerates ideal position size based on risk tolerance. Works with majors (e.g. `EUR/USD`).\n\n⚠️ **Disclaimer:** Calculation uses a standard lot size of 100,000 units and assumes a 4-decimal pair. For non-standard pairs (like those including **JPY**), this tool will not give expected results.",
                 "inline": false
             },
-            "Field3": {
+            "Field4": {
                 "name": "⌛ Other Commands",
-                "value": "Still under construction. Stay tuned for new features!",
+                "value": "**`/ask-misty`**\nIf you're struggling with any of the commands or curious about what you see you can chat with the bot for some extra information!\n\nStill under construction. Stay tuned for new features!",
                 "inline": false
             }
         }
