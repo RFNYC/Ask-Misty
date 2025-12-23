@@ -209,7 +209,7 @@ async def send_activation_message():
 
         if target:
             embed = static_messages.bot_online.createEmbed()
-            await target.send(embed=embed) # type: ignore
+            # await target.send(embed=embed) # type: ignore
     
 
 # --- EVENTS ----
@@ -470,11 +470,14 @@ async def define_strategy(interaction: discord.Interaction, strategy_name: str, 
     name="backtest-strategy", 
     description="Have Misty generate a report on any of the servers saved strategies!"
 )
-async def backtest(interaction: discord.Interaction, strategy_name: str, timeframe: str, years: str):
-    server = interaction.guild_id
-    response = yfinanceHelpers.backtest_strategy(collection_file=server_collection, strategy_name=strategy_name, timeframe=timeframe, guild_id=server, duration_years=years)
+async def backtest(interaction: discord.Interaction, strategy_name: str, timeframe: str, years: int):
 
-    await interaction.response.send_message(response)
+    await interaction.response.defer()
+
+    server = interaction.guild_id
+    response = yfinanceHelpers.backtest_strategy(collection_file=server_collection, strategy_name=strategy_name, guild_id=server, timeframe=timeframe, years=years)
+
+    await interaction.followup.send(response)
 
 
 @tree.command(

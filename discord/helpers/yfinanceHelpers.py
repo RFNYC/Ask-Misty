@@ -1,96 +1,114 @@
-from dotenv import find_dotenv, load_dotenv
-from datetime import datetime
-import numpy as np
 import pandas as pd
-import os, requests
 import yfinance as yf
+from datetime import datetime
 
-"""
-To avoid more connections to mongoDB we'll use the same method of passing the collection file a helper
-to give our backtesting engine access to user defined strategies.
-
-I decided to actually limit this even further. I'm only going to backtest the strategy on historical data on the S&P500.
-Its possible to retrieve data for a number of large securities but that comes with a ton of data inconsistency issues and costs.
-To avoid all that and deploy this project as soon as possible I'm sticking with the basics.
-"""
-
-def backtest_strategy(collection_file, strategy_name, guild_id, timeframe, duration_years):
-
-    # retrieving strategy
-    query = { "guild-id": f"{guild_id}" }
+def backtest_strategy(collection_file, strategy_name, guild_id, timeframe, years):
+    query = {"guild-id": f"{guild_id}"}
     document = collection_file.find_one(query)
-    strategies = document['strategies'] # type: ignore
-    target_strategy = strategies[f"{strategy_name}"]
-    duration_years = int(duration_years)
-    timeframe = timeframe
-
-    # preparing information
+    
+    if not document or 'strategies' not in document:
+        return "Guild data or strategies not found."
+        
+    strategies = document['strategies']
+    target_strategy = strategies.get(strategy_name)
+    if not target_strategy:
+        return f"Strategy '{strategy_name}' not found."
+        
     indicators = target_strategy["indicators"]
     rules = target_strategy["rules"]
-    indicator1 = indicators[0]["type"]
-    time_period1 = indicators[0]["time-period1"]
-    indicator2 = indicators[1]["type"]
-    time_period2 = indicators[1]["time-period1"]
-    buy_rule = rules["buy"]
-    sell_rule = rules["sell"]
     
-
-    response = f"{indicator1},{indicator2},{time_period1},{time_period2},{buy_rule},{sell_rule}, timeframe given: {timeframe}"
-
-    # ---- Backtesting -----
-
-    # Only tracking S&P500:
-    ticker = "^GSPC"        
+    # hardcoding this because getting data's a bitch
+    ticker = "^GSPC"  
     end_date = datetime.now()
-    start_date = end_date - pd.DateOffset(years=duration_years)
+    start_date = end_date - pd.DateOffset(years=years)
     
-    # Fetch data directly into a DataFrame
     data_df = yf.download(
         ticker, 
         start=start_date.strftime('%Y-%m-%d'), 
         end=end_date.strftime('%Y-%m-%d'),
-        interval=timeframe,                     
+        interval=timeframe,
+        progress=False
     ) 
 
-    if data_df.empty:
-        raise ValueError(f"Failed to retrieve data for {ticker} with interval '{timeframe}'.")
+    if data_df is None or data_df.empty:
+        return "No data retrieved from Yahoo Finance."
 
-    # Calculate start date based on duration
+    if isinstance(data_df.columns, pd.MultiIndex):
+        data_df.columns = data_df.columns.get_level_values(0)
 
-    for indicator in indicators:
-        type = indicator['type']
-        period = int(indicator['time-period1'])
+    rule_mapping = {}
 
-        if type.upper() == 'SMA': 
-            print(f"Calculating SMA for period: {period}")
-            data_df[f'SMA_{period}'] = data_df['Close'].rolling(window=period).mean()
-        elif type.upper() == "EMA":
-            print(f"Calculating EMA for period: {period}")
-            data_df[f'EMA_{period}'] = data_df['Close'].ewm(span=period, adjust=False).mean()
-        elif type.upper() == "RSI":
-            print(f"Calculating RSI for period: {period}")
-            # --- Step A: Calculate daily price changes (Differences) ---
+    for i, indicator in enumerate(indicators):
+        indicator_type = str(indicator.get('type', '')).strip().upper()
+        period_val = str(indicator.get('time-period1', '14')).strip()
+        period = int(period_val)
+        
+        col_name = f"{indicator_type}_{period}"
+        rule_mapping[f"indicator{i+1}"] = col_name
+
+        if indicator_type == 'SMA':
+            data_df[col_name] = data_df['Close'].rolling(window=period).mean()
+        elif indicator_type == "EMA":
+            data_df[col_name] = data_df['Close'].ewm(span=period, adjust=False).mean()
+        elif indicator_type == "RSI":
             delta = data_df['Close'].diff()
-
-            gains = delta.where(delta > 0, 0)
-            losses = (-delta).where(delta < 0, 0)
-
+            gains, losses = delta.clip(lower=0), -1 * delta.clip(upper=0)
             avg_gain = gains.ewm(span=period, adjust=False).mean()
             avg_loss = losses.ewm(span=period, adjust=False).mean()
+            rs = avg_gain / (avg_loss.replace(0, 0.00001)) 
+            data_df[col_name] = 100 - (100 / (1 + rs))
 
-            # The 0.00001 is to prevent division by zero for the RS calculation
-            RS = avg_gain / (avg_loss.replace(0, 0.00001)) 
+    buy_rule = rules["buy"]
+    sell_rule = rules["sell"]
+    for key, val in rule_mapping.items():
+        buy_rule = buy_rule.replace(key, val)
+        sell_rule = sell_rule.replace(key, val)
 
-            # RSI Formula: RSI = 100 - (100 / (1 + RS))
-            data_df[f'RSI_{period}'] = 100 - (100 / (1 + RS))
+    dataset = data_df.dropna().copy()
+    if dataset.empty:
+        return "Insufficient data for these indicator periods."
 
-    # cleanup
-    dataset = data_df.dropna()
-    print(dataset)
+    # placeholder account data
+    balance = 10000.0
+    initial_balance = balance
+    position = 0 
+    buy_price = 0
+    trades = []
 
+    for _, row in dataset.iterrows():
+        context = row.to_dict()
+        try:
+            if position == 0 and eval(buy_rule, {"__builtins__": None}, context):
+                position = 1
+                buy_price = float(row['Close'])
+            
+            elif position == 1 and eval(sell_rule, {"__builtins__": None}, context):
+                current_close = float(row['Close'])
+                trade_return = (current_close - buy_price) / buy_price
+                balance *= (1 + trade_return)
+                trades.append(trade_return)
+                position = 0
+        except Exception as e:
+            return f"Logic Error in Rule Evaluation: {e}"
+
+    total_return = ((balance - initial_balance) / initial_balance) * 100
+    win_rate = (len([t for t in trades if t > 0]) / len(trades) * 100) if trades else 0
+    
+    final_close = float(dataset['Close'].iloc[-1])
+    start_close = float(dataset['Close'].iloc[0])
+    bh_return = ((final_close - start_close) / start_close) * 100
+
+    return {
+        "strategy": strategy_name,
+        "total_return": f"{total_return:+.2f}%",
+        "win_rate": f"{win_rate:.1f}%",
+        "trade_count": len(trades),
+        "benchmark": f"{bh_return:+.2f}%",
+        "balance": f"${balance:,.2f}"
+    }
 
 def calculate_pip_value(ticker_symbol):
-    
+
     ticker_symbol = f"{ticker_symbol.upper()}=X"
     ticker_symbol = ticker_symbol.upper()
 
@@ -109,7 +127,7 @@ def calculate_pip_value(ticker_symbol):
     account_currency = "USD"
 
     pip_value_in_quote = (pip_size / current_rate) * lot_size_units
-    
+
     if quote_currency == account_currency:
         final_pip_value = pip_size * lot_size_units
     else:
