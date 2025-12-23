@@ -1,12 +1,13 @@
 # Ask Misty! 
-Ask Misty anything about the markets on your Discord server! Features: quick Forex Factory economic calendar references, basic lot size calculations for risk management, and Gemini RAG-powered chats to help you understand Misty's commands.
+Ask my cat about forex stuff.<br>
+Features: Quick ForexFactory calendar references, basic lot size calculations for risk management, and Gemini RAG-powered chats to help you understand Misty's commands.
 
-# In Development:
-WIP In progress:
+# Development:
+When we began making this one of the fundamental walls we kept running into was this fact: We don't really know how to do anything. Like sure we had a basic idea of stocks and trading but when it comes analyzing strategy and securities to build algorithms around we kept getting stuck. So we decided to pivot, Misty should be a learning tool. When we learn to do something, Misty learns (the rag gets updated), and by extension, we hope to help other people learn forex.
+
+In progress:
 - Custom strategy backtesting engine
 - Server persistent strategy definitions  
-
-When we began making this one of the fundamental walls we kept running into was this fact: We didn't know how to do anything! Sure we had a basic idea of stocks and trading but when it comes analyzing strategy and securities to build algorithms around we kept getting stuck. So we decided to pivot: Misty should be a learning bot. When we learn, she learns (the rag gets updated), and by extention, you all learn.
 
 Future Ideas/Goals:
 - Larger RAG library of Forex terms/strategy
@@ -28,4 +29,5 @@ This project originally spawned from a joke between me and my sister about our c
 This is misty:
 
 ![20250829_175905 (1)](https://github.com/user-attachments/assets/a45e57b8-3d9b-4ad9-b315-6b7045627ad5)
+
 
