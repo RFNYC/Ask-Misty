@@ -209,6 +209,7 @@ async def send_activation_message():
 
         if target:
             embed = static_messages.bot_online.createEmbed()
+            print("BOT_ONLINE MESSAGE DISABLED FOR TESTING, ENABLE WHEN FINISHED.")
             # await target.send(embed=embed) # type: ignore
     
 
@@ -476,8 +477,9 @@ async def backtest(interaction: discord.Interaction, strategy_name: str, timefra
 
     server = interaction.guild_id
     response = yfinanceHelpers.backtest_strategy(collection_file=server_collection, strategy_name=strategy_name, guild_id=server, timeframe=timeframe, years=years)
+    embed = commands.backtest_strategy.createEmbed(response, years)
 
-    await interaction.followup.send(response)
+    await interaction.followup.send(embed=embed)
 
 
 @tree.command(
