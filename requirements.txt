@@ -4,3 +4,7 @@ pymongo==4.15.4
 pandas==2.3.3
 discord==2.3.2
 discord.py==2.6.4
+google-genai==1.56.0
+yfinance==0.2.66
+undetected-chromedriver==3.5.5
+setuptools==80.9.0
