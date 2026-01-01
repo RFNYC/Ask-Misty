@@ -77,9 +77,23 @@ async def fx_refresh_loop():
 
         current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         print(f"[{current_time}] Loop Run #{run_count}: Printing to terminal:")
-        print(f"Scraper will check for new data in 10mins.")
 
-        result = subprocess.run([sys.executable, '../services/scraper.py'], capture_output=True, text=True).stdout
+        # Define exactly where the services folder is
+        base_dir = os.path.dirname(os.path.abspath(__file__)) # /home/rfnyc/Projects/Ask-Misty/discord
+        services_dir = os.path.join(base_dir, '..', 'services')
+
+        try:
+            result = subprocess.run(
+                [sys.executable, 'scraper.py'], 
+                cwd=services_dir,  # <--- THIS TELLS LINUX TO "STEP INTO" SERVICES FIRST
+                capture_output=True, 
+                text=True
+            ).stdout
+
+            print("Scraper.py ran successfully.")
+            print(f"Scraper will check for new data in 10mins.")
+        except Exception as e:
+            print(f"Failed to run Scraper.py | Error: {e}")
 
         # only god knows how this works
         channel = None
@@ -210,7 +224,7 @@ async def send_activation_message():
         if target:
             embed = static_messages.bot_online.createEmbed()
             print("BOT_ONLINE MESSAGE DISABLED FOR TESTING, ENABLE WHEN FINISHED.")
-            # await target.send(embed=embed) # type: ignore
+            await target.send(embed=embed) # type: ignore
     
 
 # --- EVENTS ----
@@ -219,18 +233,20 @@ async def send_activation_message():
 async def on_ready():
     print(f'We have logged in as {client.user}')
 
+     # For slash commands to work and appear on the users discord client we sync the command tree on startup
+    try:
+        await tree.sync()
+        print("Command tree synced globally.")
+    except Exception as e:
+        print(f"Failed to sync commands: {e}")
+
     # BACKGROUND TASKS:
     # Basically tells the client to run x func this once the bot is fully active & has all cached information.
     client.loop.create_task(system_refresh_loop())
     client.loop.create_task(fx_refresh_loop())
     client.loop.create_task(send_activation_message())
 
-    # For slash commands to work and appear on the users discord client we sync the command tree on startup
-    try:
-        await tree.sync()
-        print("Command tree synced globally.")
-    except Exception as e:
-        print(f"Failed to sync commands: {e}")
+    print("Created background tasks.")
 
 @client.event
 async def on_guild_join(guild: discord.Guild):

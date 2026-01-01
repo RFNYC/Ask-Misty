@@ -1,9 +1,12 @@
 from selenium import webdriver
 from selenium.webdriver.common.by import By
+from selenium.webdriver.chrome.options import Options
 from pymongo.mongo_client import MongoClient
 from pymongo.server_api import ServerApi
 from dotenv import find_dotenv, load_dotenv
 from datetime import datetime, timedelta
+from time import sleep
+import undetected_chromedriver as uc
 import os, sys
 
 dotenv_path = find_dotenv()
@@ -25,11 +28,26 @@ database = client["forex-factory"]
 collection = database["fxdata"]
 
 # --- SCRAPING DATA ----
+print("Scraper Running...")
 
-driver = webdriver.Chrome()
+options = uc.ChromeOptions()
+version = 143
+options.add_argument('--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36')
+options.add_argument('--headless=new')
+driverpath = "./scraper_reqs/chromedriver"
+browserpath = "./scraper_reqs/chromium"
+
+driver = uc.Chrome(
+    driver_executable_path=driverpath, 
+    browser_executable_path=browserpath,      
+    version_main=version, 
+    options=options
+)
+
 driver.get("https://www.forexfactory.com")
 
-tab_name = driver.title
+# debug
+driver.save_screenshot("debug_view.png")
 
 News_Event_Titles_List = driver.find_elements(By.CLASS_NAME, "calendar__event-title")
 Currencies_Impacted_List = driver.find_elements(By.CSS_SELECTOR, "td.calendar__currency")
@@ -38,6 +56,7 @@ Actual_List = driver.find_elements(By.CSS_SELECTOR,"td.calendar__actual")
 Forecasted_List = driver.find_elements(By.CSS_SELECTOR,"td.calendar__forecast")
 Previous_List = driver.find_elements(By.CSS_SELECTOR, "td.calendar__previous")
 Event_Impact_Level_Icons = driver.find_elements(By.CSS_SELECTOR, "td.calendar__impact")
+
 
 try:
     # If theres no news this automatically fails and the script simply stops.
@@ -51,6 +70,7 @@ try:
         impacts.append(impact)
 except:
     print("An error has occured scraping data from ForexFactory.com.")
+    sys.exit()
 
 def get_content(selenium_arr):
     res = []

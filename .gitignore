@@ -4,3 +4,4 @@ venv/
 **/__pycache__/
 debug.txt
 add_embeddings.py
+debug_view.png
