@@ -105,46 +105,47 @@ async def fx_refresh_loop():
             if result: 
                 if result != '[]':
                     result = result.replace("'",'"')
-                    data = json.loads(result)
+                    try:
+                        data = json.loads(result)
 
-                    embed = discord.Embed(
-                    title=f"📢 **Economic Data Release:**",
-                    color=discord.Color.blue()
-                    )
-
-                    for event in data:
-
-                        # theres probably a way better way to do this but im lazy
-                        new_vals = []
-                        if 'actual' in event:
-                            new_vals.append((event['actual'], 'actual'))
-                        else:
-                            event['actual'] = 'N/A'
-                            new_vals.append((event['actual'], 'actual'))
-
-                        if 'forecast' in event: 
-                            new_vals.append((event['forecast'], 'forecast'))
-                        else:
-                            event['forecast'] = 'N/A'
-                            new_vals.append((event['forecast'], 'forecast'))
-
-                        if 'previous' in event: 
-                            new_vals.append((event['previous'], 'previous'))
-                        else:
-                            event['previous'] = 'N/A'
-                            new_vals.append((event['previous'], 'previous'))
-
-
-
-                        embed.add_field(
-                            name=f"{event['currency-impacted']} - {event['event-title']}:",
-                            value=f"**New Values:** Actual: {new_vals[0][0]}, Forecast: {new_vals[1][0]} Previous: {new_vals[2][0]}\n**Scheduled Update Time:** {event['time-occured']}",
-                            inline=False
+                        embed = discord.Embed(
+                        title=f"📢 **Economic Data Release:**",
+                        color=discord.Color.blue()
                         )
 
-                await channel.send(embed=embed)
-            else:
-                pass
+                        for event in data:
+
+                            # theres probably a way better way to do this but im lazy
+                            new_vals = []
+                            if 'actual' in event:
+                                new_vals.append((event['actual'], 'actual'))
+                            else:
+                                event['actual'] = 'N/A'
+                                new_vals.append((event['actual'], 'actual'))
+
+                            if 'forecast' in event: 
+                                new_vals.append((event['forecast'], 'forecast'))
+                            else:
+                                event['forecast'] = 'N/A'
+                                new_vals.append((event['forecast'], 'forecast'))
+
+                            if 'previous' in event: 
+                                new_vals.append((event['previous'], 'previous'))
+                            else:
+                                event['previous'] = 'N/A'
+                                new_vals.append((event['previous'], 'previous'))
+
+
+
+                            embed.add_field(
+                                name=f"{event['currency-impacted']} - {event['event-title']}:",
+                                value=f"**New Values:** Actual: {new_vals[0][0]}, Forecast: {new_vals[1][0]} Previous: {new_vals[2][0]}\n**Scheduled Update Time:** {event['time-occured']}",
+                                inline=False
+                            )
+
+                        await channel.send(embed=embed)
+                    except:
+                        pass
 
         # Wait for the specified interval before running the loop again
         await asyncio.sleep(fx_interval_seconds)
