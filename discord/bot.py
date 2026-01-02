@@ -95,19 +95,14 @@ async def fx_refresh_loop():
         except Exception as e:
             print(f"Failed to run Scraper.py | Error: {e}")
 
-        # only god knows how this works
-        channel = None
-        channel_id = global_guild_settings['announcement-channel']
+        channels = mongoHelpers.get_announcement_channels(server_collection)
+        for id in channels:
+            channel = client.get_channel(int(id))
 
-        if channel_id != "":
-            channel = client.get_channel(int(channel_id))
-        else:
-            pass
-
-        if channel != None:
-                
-                print(result, "No Updates. Passing over.")
-                # turning the result string into a useable format
+        if channel:                
+            print(result, "No Updates. Passing over.")
+            # turning the result string into a useable format
+            if result: 
                 if result != '[]':
                     result = result.replace("'",'"')
                     data = json.loads(result)
@@ -148,15 +143,15 @@ async def fx_refresh_loop():
                         )
 
                 await channel.send(embed=embed)
-        else:
-            pass
-
+            else:
+                pass
 
         # Wait for the specified interval before running the loop again
         await asyncio.sleep(fx_interval_seconds)
 
 async def system_refresh_loop():
     await client.wait_until_ready()
+    
     sys_run_count = 0
 
     # to track if we sent the message that day. We get 1 send per day.
@@ -179,16 +174,11 @@ async def system_refresh_loop():
 
         curr_day = datetime.now().isoweekday()
 
-        # only god knows how this works
-        channel = None
-        channel_id = global_guild_settings['announcement-channel']
+        channels = mongoHelpers.get_announcement_channels(server_collection)
+        for id in channels:
+            channel = client.get_channel(int(id))
 
-        if channel_id != "":
-            channel = client.get_channel(int(channel_id))
-        else:
-            pass
-
-        if channel != None:
+        if channel:
             # INSIDE HERE IS WHERE ANY AUTOMATIC ANNOUNCEMENTS ON X TIME INTERVAL NEED TO BE BUILT.
             if market_open_msg == 0: 
                 if datetime.now().hour == 9 and datetime.now().minute == 30 and curr_day not in off_days:
@@ -223,7 +213,7 @@ async def send_activation_message():
 
         if target:
             embed = static_messages.bot_online.createEmbed()
-            print("BOT_ONLINE MESSAGE DISABLED FOR TESTING, ENABLE WHEN FINISHED.")
+            # print("BOT_ONLINE MESSAGE DISABLED FOR TESTING, ENABLE WHEN FINISHED.")
             await target.send(embed=embed) # type: ignore
     
 

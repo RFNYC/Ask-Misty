@@ -69,6 +69,7 @@ def build_rag_response(collection, query):
             If the passage is irrelevant to the answer, you may ignore it.
                                 
             Prioritize helping the user actually **use** a command. Only explain it's usage if asked what it does.
+            If context does not directly answer the question give suggestions on what else to ask about.
 
             QUESTION: '{query}'
             PASSAGE: '{relevant_passage}'

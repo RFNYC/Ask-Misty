@@ -1,4 +1,5 @@
 [
+    
     {
         "title": "FX NOTE",
         "content": "All commands with the suffix /fx scrape ForexFactory.com for scheduled news and insights. These events help traders gauge market safety and potential volatility. We do not own any of the data scraped. The website is scraped every 10 minutes to check if MONGOKEY parameters such as Actual, Forecasted, and Predicted have been filled in for each event. These parameters are MONGOKEY indicators for how the market responded to an event which is why we try to scrape them in real time as they appear."
@@ -32,7 +33,16 @@
     {
         "title": "Ask Misty",
         "content": "The reason you're able to talk to me or in other words 'ask-misty' is because the developer has implemented a RAG. This allows an LLM to be trained with specific context aimed at building a chatbot which makes your life easier."
-    }
+    },
 
+    {
+        "title": "What is currency trading",
+        "content": "Currency trading, forex trading, or foreign exchange trading is the buying and selling of currencies on the forex market with the aim of making a profit. It is one of the most actively traded markets in the world, with individuals, corporations, and banks contributing to a daily average trading volume of more than $5 trillion. Unlike shares or commodities, currency trading does not take place on exchanges but directly between two parties, in an over-the-counter (OTC) market. The forex market is run by a global network of banks, spread across four major forex trading centers in different time zones: London, New York, Sydney, and Tokyo. Currency trading works like any other exchange where you are buying one asset using a currency. In the case of forex, the market price tells a trader how much of one currency is required to purchase another. For example, the EUR/USD currency exchange rate shows how many US dollars buy one euro.."
+    },
+
+    {
+        "title": "What is a pip",
+        "content": "A lot references the smallest available trade size that you can place when trading currency pairs in the foreign exchange market. Currencies are traded in lots, which are batches of currency used to standardize the quantity for forex trades. A standard lot is 100,000 units of currency. There are also smaller sizes available, known as mini lots and micro lots, worth 10,000 and 1000 units respectively. LOT: NUMBER OF UNITS. STANDARD LOT: 100,000. MINI LOT: 10,000. MICRO LOT: 1,000. In the past, spot forex has been traded in lots of 100, 1,000, 10,000 or 100,000 units. Most forex brokers will refer to lots by increments of 1,000 (micro lot). A micro lot represents 1,000 units of any currency. A one-pip movement for a micro lot corresponds with a $0.10 change. For example, if you buy $1,000 against the Japanese yen at a rate of ¥109.00. The exchange rate moves to ¥109.50, which means USD/JPY moved 50 pips. You have made a profit of $5. 50 pips x $0.10 = $5 If the exchange rate falls 50 pips to ¥108.50 you will have a loss of $5. Here are examples of pip values for EUR/USD and USD/JPY, depending on lot size."
+    }
 
 ]
